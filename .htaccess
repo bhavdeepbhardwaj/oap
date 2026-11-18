@@ -1,0 +1,115 @@
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+	
+	# Allow ACME HTTP-01 challenge before application routing
+    RewriteRule ^\.well-known/acme-challenge/ - [END]
+
+    # Redirect IP address access to domain name
+    RewriteCond %{HTTP_HOST} ^164\.100\.161\.48$
+    RewriteRule ^ https://onlinevacancy.shipmin.nic.in%{REQUEST_URI} [L,R=301]
+
+    # Prevent access to adminer.php
+    RewriteRule ^/?adminer.php$ - [L]
+
+    # Host Header Attack Prevention
+    # Redirect non-matching host to correct domain
+    RewriteCond %{HTTP_HOST} !^onlinevacancy\.shipmin\.nic\.in$ [NC]
+    RewriteRule ^ https://onlinevacancy.shipmin.nic.in%{REQUEST_URI} [L,R=301]
+
+    # Proceed with normal routing only if host is correct
+    RewriteCond %{HTTP_HOST} ^onlinevacancy\.shipmin\.nic\.in$ [NC]
+    RewriteRule ^$ app/webroot/ [L]
+    RewriteCond %{HTTP_HOST} ^onlinevacancy\.shipmin\.nic\.in$ [NC]
+    RewriteRule (.*) app/webroot/$1 [L]
+</IfModule>
+
+<IfModule mod_headers.c>
+    # Set XSS Protection header
+    Header set X-XSS-Protection "1; mode=block"
+	
+    # Enforce HTTPS and enable HSTS
+    Header set Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+
+    # Prevent content type sniffing
+    Header set X-Content-Type-Options nosniff
+
+    # Referrer Policy
+    #Header always set Referrer-Policy "same-origin"
+    #Header always set Referrer-Policy "no-referrer-when-downgrade"
+	Header always set Referrer-Policy "strict-origin-when-cross-origin"
+	Header always set Cross-Origin-Resource-Policy "same-origin"
+	Header always set Cross-Origin-Embedder-Policy "require-corp"
+	Header always set Cross-Origin-Opener-Policy "same-origin"
+
+    # Content Security Policy - Adjust if needed
+    #Header set Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+	#Header always set Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+	#Header always set Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+	#Header always set Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+	#Header always set Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; require-trusted-types-for 'script'"
+	#Header always set Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; require-trusted-types-for 'script'"
+	#Header always set Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+	#Header always set Content-Security-Policy "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+	#Header always set Content-Security-Policy "default-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self';"
+	#Header always set Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self';"
+	#Header always set Content-Security-Policy-Report-Only "default-src 'self'; script-src 'self' 'nonce-{RANDOM_VALUE}'; style-src 'self' 'nonce-{RANDOM_VALUE}'; report-uri /csp-violation-report-endpoint/"
+	#Header set Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none';"
+	#Header set Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self'; font-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none';"
+	#Header set Content-Security-Policy "upgrade-insecure-requests"
+	#Header set Content-Security-Policy "default-src 'self'; script-src 'self'; object-src 'none'; upgrade-insecure-requests;"
+	#Header set Content-Security-Policy " default-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://code.jquery.com 'unsafe-inline'; style-src 'self' https://fonts.googleapis.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com 'unsafe-inline'; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; object-src 'none'; upgrade-insecure-requests;"
+	Header set Content-Security-Policy " default-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://code.jquery.com 'unsafe-inline' 'unsafe-eval'; style-src 'self' https://fonts.googleapis.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com 'unsafe-inline'; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; object-src 'none'; upgrade-insecure-requests;"
+
+
+
+    # Permission Policy - limit feature access
+    #Header always set Permission-Policy "accelerometer=(), autoplay=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()"
+	Header always set Permissions-Policy "geolocation=(), microphone=(), camera=(), fullscreen=(), payment=(), usb=(), accelerometer=(), gyroscope=(), magnetometer=(), autoplay=()"
+
+    # Secure cookies - Uncomment if applicable
+    #Header always edit Set-Cookie ^(.*)$ $1; HttpOnly; Secure; SameSite=Strict;
+	#Header always edit Set-Cookie "(?i)(?!(HttpOnly|Secure|SameSite|Path))" "$0; HttpOnly; Secure; SameSite=Strict; Path=/dashboard"
+	#Header always edit Set-Cookie "(?i)(?!(HttpOnly|Secure|SameSite|Path))" "$0; HttpOnly; Secure; SameSite=Strict; Path=/dashboard"
+	#Header always edit Set-Cookie "(?i)(?!(HttpOnly|Secure|SameSite|Path))" "$0; HttpOnly; Secure; SameSite=Strict; Path=/dashboard"
+	#Header always edit Set-Cookie "(?i)(?!(HttpOnly|Secure|SameSite))" "$0; HttpOnly; Secure; SameSite=Strict"
+	#Header always edit Set-Cookie "(?i)(?!(HttpOnly|Secure|SameSite|Path))" "$0; HttpOnly; Secure; SameSite=Strict; Path=/dashboard"
+	#Header always edit Set-Cookie ^(.*)$ "$1; Secure; HttpOnly; SameSite=Strict; Path=/app"
+	#Header always set Set-Cookie "BNES_HttpOnly=value; Path=/home/fonts; Secure; HttpOnly; SameSite=Strict"
+	#Header always edit Set-Cookie ^(.*)$ "$1; Path=/; Secure; HttpOnly; SameSite=Strict"
+	Header always set Set-Cookie HttpOnly;Secure;SameSite=Strict
+	#Header always edit Set-Cookie ^(.*)$ "$1; Secure; HttpOnly; SameSite=Strict"
+
+
+
+	
+
+
+    # Remove unnecessary headers
+    Header unset X-Powered-By
+    Header unset Server
+</IfModule>
+
+# Disable Directory Listing for All Folders
+Options -Indexes
+
+# Restrict adminer.php access to Specific IP For Developer
+<Files "adminer.php">
+  Require ip 10.26.115.153
+  Require ip 10.21.116.214
+  Require ip 10.26.121.178
+  Require all denied
+</Files>
+
+# Hide Version info in JS/CSS Files
+<FilesMatch "\.(js|css)$">
+  Header unset X-Powered-By
+  Header set Content-Disposition "inline"
+  Header always set X-Content-Type-Options "nosniff"
+  FileETag None
+</FilesMatch>
+
+
+# These only work if PHP runs as an Apache module
+php_flag session.cookie_secure On
+php_flag session.cookie_httponly On
+php_value session.cookie_samesite "Strict"

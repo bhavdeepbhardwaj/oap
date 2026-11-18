@@ -1,0 +1,75 @@
+$(function() {
+  // Burst Cache Function
+  function burstCache() { 
+    if (!navigator.onLine) { 
+      document.body.innerHTML = 'Loading...';
+      window.location = 'ErrorPage.html';
+    }
+  }
+
+  if ($this->request->clientIp() !== '::1') {
+    burstCache();
+  }
+
+  // Modal Popup Logic
+  $(".login-model").click(function() {
+    $("#loginModal").modal('show');
+    $('#loginModelBody').html('Loading..');
+    $.get(
+      '<?php echo $this->webroot;?>users/login',
+      function(response) {
+        $('#loginModelBody').html(response);
+      }
+    );
+  });
+
+  if ($this->Session->read('open_login')) {
+    $(".login-model").trigger('click');
+    unset($_SESSION['open_login']);
+  }
+
+  $(".forgot-password-model").click(function() {
+    $("#forgotPasswordModal").modal('show');
+    $('#forgotPasswordModelBody').html('Loading..');
+    $.get(
+      '<?php echo $this->webroot;?>users/forgot_password',
+      function(response) {
+        $('#forgot_passwordModelBody').html(response);
+      }
+    );
+  });
+
+  // Adjust Footer Position
+  var docHeight = $(window).height();
+  var footerHeight = $('#footer').height();
+  var footerTop = $('#footer').position().top + footerHeight;
+
+  if (footerTop < docHeight) {
+    $('#footer').css('margin-top', -6 + (docHeight - footerTop) + 'px');
+  }
+
+  // Popup Show/Hide Logic
+  $(function() {
+    var overlay = $('<div id="overlay"></div>');
+    overlay.show();
+    overlay.appendTo(document.body);
+    $('.popup').show();
+    $('.close').click(function() {
+      $('.popup').hide();
+      overlay.remove();
+      return false;
+    });
+
+    $('.x').click(function() {
+      $('.popup').hide();
+      overlay.remove();
+      return false;
+    });
+  });
+
+  function close1() {
+    $('.popup').hide();
+    $('#overlay').remove();
+    return false;
+  };
+});

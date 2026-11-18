@@ -1,0 +1,94 @@
+<div class="row">
+	<div class="col-xs-12">
+		<div class="box">
+			<div class="box-header">
+				<h3 class="box-title">Team Employees</h3>
+			</div><!-- /.box-header -->
+			
+			<div class="box-body table-responsive">
+				
+				<table class="table table-bordered table-striped dataTable">
+					<thead>
+						<tr>
+							<th>Name</th>
+							<th>Email Id</th>
+							
+							<th>Action</th>
+						</tr>
+					</thead>
+					<tbody>
+					<?php 
+					$page = $this->request->params['paging']['User']['page'];
+					$limit = $this->request->params['paging']['User']['limit'];
+					$i = ($page-1) * $limit;
+					if(!empty($users)){
+					foreach ($users as $user): 
+					$roleLevel=0;
+					//pr($employee)
+					?>
+						<tr>
+							<td><?php echo h($user['User']['u_name_title'].' '.$user['User']['f_name'].' '.$user['User']['l_name']);?>
+			                </br><span class="label label-success"><?php echo h($user['User']['status']); ?></span>
+							</td>
+							<td><?php echo h($user['User']['email']); ?></td>
+							<td>
+							<?php 
+							  $permissionDependency=$this->Session->read('Auth.User.Group.dependency');
+							//if permissionDependency of logged in user is other than 'none' (eg. location)
+									//if($permissionDependency=='organization')
+									//{
+										//pr($this->Session->read('Auth.User'));
+										$loggedInUserOrganization=$this->Session->read('Auth.User.organization_id');
+										
+										//if employee belongs to same office location
+										//if($loggedInUserOrganization==$user['User']['organization_id'])
+										//{
+											echo $this->Html->link(false, array('action' => 'update_employee_level_access', $user['User']['id']), array( 'class'=>"fa fa-fw fa-edit",'title'=>'Edit User Level Permissions')); 
+										//}
+										//else
+										//{
+										//	echo 'User does not belong to your organization';
+										//}
+									//}
+							?>
+							</td>
+							
+							
+							
+							<!--td>
+								
+								<?php //echo $this->Html->link(false, array('action' => 'update_employee_level_access', $user['User']['id']), array( 'class'=>"fa fa-fw fa-edit",'title'=>'Edit User Level Permissions')); 
+									?> 
+							
+							</td-->
+						</tr>
+						
+					<?php endforeach; }
+					else{
+					
+					echo '<tr><td colspan="10">No Records Available.</td></tr>';
+					}?>
+				</table>
+				<?php if($this->params['paging']['User']['pageCount'] > 1){ ?>
+				<div class="row">
+					<div class="pull-right">
+						<div class="paging_bootstrap">
+							<ul class="pagination">
+								<?php
+								echo $this->Paginator->first("First", array('escape' => false, 'tag' => 'li'),  '<a href="#">First</a>', array('class' => 'first disabled', 'escape' => false, 'tag' => 'li'));
+								echo $this->Paginator->prev("&larr; Previous", array('escape' => false, 'tag' => 'li'), '<a href="#">&larr; Previous</a>', array('class' => 'prev disabled', 'escape' => false, 'tag' => 'li'));
+
+								echo '&nbsp;' . $this->Paginator->numbers(array('tag' => 'li', 'separator' => '', 'currentClass' => 'active','currentTag'=>'a href="#"'));
+								echo $this->Paginator->next("Next &rarr;", array('escape' => false, 'tag' => 'li'), '<a href="#">Next &rarr;</a>', array('class' => 'next disabled', 'escape' => false, 'tag' => 'li'));
+								echo $this->Paginator->last("Last", array('escape' => false, 'tag' => 'li'), '<a href="#">Last</a>', array('class' => 'last disabled', 'escape' => false, 'tag' => 'li'));
+								?>
+							</ul>
+						</div>
+					</div>
+				</div>
+				<?php } ?>
+			</div><!-- /.box-body -->
+		</div>
+	</div>
+</div>
+

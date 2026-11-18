@@ -1,0 +1,141 @@
+<?php
+/**
+ * Application level Controller
+ *
+ * This file is application-wide controller file. You can put all
+ * application-wide controller-related methods here.
+ *
+ * CakePHP(tm) : Rapid Development Framework (http://cakephp.org)
+ * Copyright (c) Cake Software Foundation, Inc. (http://cakefoundation.org)
+ *
+ * Licensed under The MIT License
+ * For full copyright and license information, please see the LICENSE.txt
+ * Redistributions of files must retain the above copyright notice.
+ *
+ * @copyright     Copyright (c) Cake Software Foundation, Inc.
+ * @link          http://cakephp.org CakePHP(tm) Project
+ * @package       app.Controller
+ * @since         CakePHP(tm) v 0.2.9
+ * @license       http://www.opensource.org/licenses/mit-license.php MIT License
+ */
+
+App::uses('Controller', 'Controller');
+
+class AppController extends Controller {
+
+    public $uses = array('ActionLog');
+
+    public $components = array(
+        'Security',
+        'Acl',
+        'Session',
+        'Auth' => array(
+            'loginRedirect' => array('controller' => 'dashboard', 'action' => 'index'),
+            'logoutRedirect' => array('controller' => '/', 'action' => '#logout'),
+            'authError' => 'You do not have permissions to view this page.',
+            'loginError' => 'Invalid Username or Password entered, please try again.',
+            'authorize' => array(
+                'Actions' => array('actionPath' => 'controllers', 'userModel' => 'User')
+            ),
+            'unauthorizedRedirect' => false
+        ),
+        'Mpdf',
+        'Paginator',
+        'RequestHandler'
+    );
+
+    public $helpers = array('Html', 'Form', 'Session', 'Js' => array('Jquery'), 'JqueryValidation');
+
+    public function beforeFilter() 
+    {
+        parent::beforeFilter();
+
+        // Disable Cache
+        $this->disableCache();
+
+        // Set Security Headers
+        $this->response->header('X-Content-Type-Options', 'nosniff');
+        $this->response->header('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
+        $this->response->header('X-Frame-Options', 'SAMEORIGIN');
+        $this->response->header('Content-Security-Policy', "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'self';");
+
+        // Allow actions for 'users' controller
+        if ($this->params['controller'] == 'users') {
+            $this->Auth->allow('user_registration', 'login');
+        }
+
+        // Allow actions for 'home' controller
+        if ($this->params['controller'] == 'home') {
+            $this->Auth->allow('index', 'notices', 'dwnld_advt', 'vacancies', 'download_guidelines', 'download_instructions', 'download_faqs');
+        }
+
+        // Disable CSRF check and post validation for Ajax requests
+        if (isset($this->Security) && $this->RequestHandler->isAjax()) {
+            $this->Security->csrfCheck = false;
+            $this->Security->validatePost = false;
+        }
+
+        $this->Security->blackHoleCallback = 'blackhole';
+
+        // Password and Organization name checks for logged-in users
+        if ($this->Session->check('Auth.User.id')) {
+            $action = $this->request->params['action'];
+            $excludedActions = array('change_password', 'logout', 'change_pwd_logout', 'download_self_profile_pic', 'update_organization_name');
+
+            if (!in_array($action, $excludedActions)) {
+                if ($this->Session->read('Auth.User.password_status') === 'Unchanged') {
+                    $this->Session->setFlash(
+                        '<button class="close" aria-hidden="true" data-dismiss="alert" type="button">×</button>Please change the password first....',
+                        'default',
+                        array('class' => 'alert alert-success alert-dismissable')
+                    );
+                    return $this->redirect(array('controller' => 'users', 'action' => 'change_password'));
+                }
+                if ($this->Session->read('Auth.User.Organization.organization_name') === 'Others' && empty($this->Session->read('Auth.User.InformationUser.other_orgn_name'))) {
+                    $this->Session->setFlash(
+                        '<button class="close" aria-hidden="true" data-dismiss="alert" type="button">×</button>Please Enter your Organization Name first....',
+                        'default',
+                        array('class' => 'alert alert-success alert-dismissable')
+                    );
+                    return $this->redirect(array('controller' => 'users', 'action' => 'update_organization_name'));
+                }
+            }
+        }
+
+        // Audit user actions
+        if ($this->Session->check('Auth.User.id')) {
+            $trailData = array(
+                'ActionLog' => array(
+                    'username' => $this->Session->read('Auth.User.username'),
+                    'ip_address' => $this->request->clientIp(),
+                    'action_requested' => $this->request->params['action'],
+                    'full_url' => $this->request->here(true),
+                    'process_id' => getmypid(),
+                    'refferer_url' => $this->request->referer(),
+                )
+            );
+            $this->ActionLog->create();
+            $this->ActionLog->save($trailData);
+        }
+
+        // Secure session cookie parameters
+        session_set_cookie_params(
+            0,             // lifetime: until browser closes
+            '/',           // path
+            '',            // domain - set if needed
+            true,          // secure flag - cookie sent only over HTTPS
+            true           // httponly flag - inaccessible to JS
+        );
+        // Note: CakePHP may override this in Session config, double-check session config if needed
+    }
+
+    public function isAuthorized($user) {
+        // Deny access by default
+        return false;
+    }
+
+    public function blackhole($type) {
+        $this->Session->setFlash(__('ERROR: %s', $type), 'flash/error');
+        // Optionally redirect or handle error here
+    }
+}

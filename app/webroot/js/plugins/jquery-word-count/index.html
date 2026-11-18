@@ -1,0 +1,50 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+<title>using jQuery Word Count Plugin</title>
+<script type="text/javascript" src="jquery.js"></script>
+<script type="text/javascript" src="jquery.wordcount.js"></script>
+<script type="text/javascript">
+<!--//---------------------------------+
+//  Developed by Roshan Bhattarai 
+//  Visit http://roshanbh.com.np for this script and more.
+//  This notice MUST stay intact for legal use
+// --------------------------------->
+$(document).ready(function()
+{
+	
+	$('#word_count').wordCount();
+	//alternatively you can use the below method to display count in element with id word_counter  
+	//$('#word_count').wordCount({counterElement:"word_counter"});
+
+	
+});
+</script>
+<style type="text/css">
+body {
+	font: 12px Verdana,Arial, Helvetica, sans-serif;
+	margin: 10px auto;
+	width:350px;
+}
+
+
+
+</style>
+</head>
+<body>
+<h2>jQuery Word Count Plugin Demo</h2>
+
+<div id="container">
+  <div>
+    <p><br />
+      <textarea name="word_count" id="word_count" cols="30" rows="6"></textarea>
+    </p>
+    <p>    <span style="color:#FF0000">Total word Count : <span id="display_count">0</span></span>
+        </p>
+  </div>
+
+ 
+</div> 
+</body>
+</html>

@@ -1,0 +1,2498 @@
+<?php
+App::uses('AppController','Controller');
+App::uses('CakeTime', 'Utility');
+App::import('Vendor', 'RSA', array('file' => 'RSA/RSA.php'));
+
+class UsersController extends AppController
+{
+    public $components = array('Captcha','Paginator');
+    public $uses=array('User','Vacancy','UserAppliedVacancy','LoginLog','VacanciesEssential','EmailSend','UsersPasswordHistory');    
+		//For Security-Session type work
+		public function beforeFilter() 
+		{
+			parent::beforeFilter();	
+		// Basic setup
+		$this->Auth->authenticate = array('Form');
+
+		// Pass settings in
+		$this->Auth->authenticate = array(
+			
+			'Form' => array('userModel' => 'User','fields' => array('username' => 'username'))
+		);	
+   
+        $this->Auth->allow('get_captcha','forgot_password','reset_password','change_pwd_logout');
+				//$this->Auth->allow();
+				$this->Security->unlockedFields = array('User.profilepic','User.profilesignature','InformationUser.caste_pdf');
+		
+	
+		}
+		
+   /*public function add()
+   {
+    if($this->request->is('post'))
+	  { 
+            if($this->Session->read('Auth.User.Group.name')=='Admin')
+			{
+			 $this->request->data['User']['organization_id'] = $this->Session->read('Auth.User.organization_id');	
+			}
+			
+			$minimum = $this->User->Group->find('first',array(
+				'fields'=>array('MAX(level) as MinimumLevel')));
+
+			$MinimumRole = $this->User->Group->find('first',array(
+				'fields'=>array('id'),
+				'conditions'=>array('level'=>$minimum[0]['MinimumLevel'])));		
+			$this->request->data['User']['group_id'] = $MinimumRole['Group']['id'];	
+			$this->request->data['User']['ip_address']=$this->request->clientIp();
+			if(empty($this->request->data['User']['profilepic']))
+			{
+			  $this->request->data['User']['profilepic'] = 'default.png';	
+			}
+			$originalPassword=$this->generatePassword();
+			$this->request->data['User']['password']=  md5('p$bALN^nhfDRR'.$originalPassword); 
+			$this->request->data['User']['password_confirm']=$this->request->data['User']['password'];
+					
+			$this->User->validator()->remove('password');
+			$this->User->validator()->remove('password_confirm');
+			$this->User->create();
+			if($this->User->save($this->request->data))
+			  {
+				echo $this->Session->setFlash('<button class="close" aria-hidden="true" data-dismiss="alert" type="button">×</button>User has been Successfully saved....','default',array('class'=>'alert alert-success alert-dismissable'));
+				
+				if(!empty($this->request->data['User']['email'])){
+						
+						$employee['User']['id'] = $this->User->getLastInsertId();
+						$this->User->id = $employee['User']['id'];
+						
+						$this->request->data['User']['mail_key']=md5(9*213+$employee['User']['id']);
+						$employee['User']['mail_key']=$this->request->data['User']['mail_key'];
+						$this->request->data['User']['forget_password_key']=md5($this->generateForgotPasswordKey());
+						$employee['User']['forget_password_key']=$this->request->data['User']['forget_password_key'];
+						$db = $this->User->getDataSource(); 
+						$this->request->data['User']['reset_key_sent_on']= $db->expression('NOW()');
+						$this->User->validator()->remove('reset_key_sent_on');
+						if($this->User->save($this->request->data))
+						 {
+						       //uncomment after security audit
+						  $this->EmailSend->employeeRegistrationMail($this->request->data);
+					      $this->redirect(array('action'=>'index'));
+						 }
+						 else
+						 {
+						   $this->User->deleteAll(array(				                                                    
+														  'User.id'=>$employee['User']['id'],
+													    ),
+													true	  
+												  );
+					       $this->request->data=NULL;
+					       $this->Session->setFlash('Sorry,Unable to add,please try after some time', 'default', array('class' => 'alert alert-danger'));	 
+						   return $this->redirect(array('controller'=>'users','action'=>'index')); 
+						 } 
+			
+					}
+			  }
+			else
+            {
+			echo $this->Session->setFlash('<button class="close" aria-hidden="true" data-dismiss="alert" type="button">×</button>Unable to Save New User , Please try again later....','default',array('class'=>'alert alert-success alert-dismissable'));
+            }			
+	  }
+	  
+	  $organizations=$this->User->Organization->find('list',array('fields'=>array('id','organization_name')));
+	  $officeLocations=$this->User->OfficeLocation->find('list',array('fields'=>array('id','location_name')));
+	  //$departments=$this->User->Department->find('list',array('fields'=>array('id','department_name')));
+	  $designations=$this->User->Designation->find('list',array('fields'=>array('id','designation_name')));
+	  $this->set(compact('organizations','officeLocations','designations'));
+   }*/
+   
+   public function add_admin()
+   {
+    if($this->request->is('post'))
+	  { 	
+			$MinimumRole = $this->User->Group->find('first',array(
+																  'fields'=>array('id'),
+																  'conditions'=>array(
+																                      'name'=>'Admin'
+																					  )
+																                     )
+													);			
+			$this->request->data['User']['group_id'] = $MinimumRole['Group']['id'];	
+			$this->request->data['User']['ip_address']=$this->request->clientIp();
+			if(empty($this->request->data['User']['profilepic']))
+			{
+			  $this->request->data['User']['profilepic'] = 'default.png';	
+			}
+			$originalPassword=$this->generatePassword();
+			$this->request->data['User']['password']=  md5('p$bALN^nhfDRR'.$originalPassword); 
+			$this->request->data['User']['password_confirm']=$this->request->data['User']['password'];
+					
+			$this->User->validator()->remove('password');
+			$this->User->validator()->remove('password_confirm');
+			$this->User->create();
+			if($this->User->save($this->request->data))
+			  {
+				echo $this->Session->setFlash('<button class="close" aria-hidden="true" data-dismiss="alert" type="button">×</button>User has been Successfully saved....','default',array('class'=>'alert alert-success alert-dismissable'));
+				
+				if(!empty($this->request->data['User']['email'])){
+						
+						$employee['User']['id'] = $this->User->getLastInsertId();
+						$this->User->id = $employee['User']['id'];
+						
+						$this->request->data['User']['mail_key']=md5(9*213+$employee['User']['id']);
+						$employee['User']['mail_key']=$this->request->data['User']['mail_key'];
+						$this->request->data['User']['forget_password_key']=md5($this->generateForgotPasswordKey());
+						$employee['User']['forget_password_key']=$this->request->data['User']['forget_password_key'];
+						$db = $this->User->getDataSource(); 
+						$this->request->data['User']['reset_key_sent_on']= $db->expression('NOW()');
+						$this->User->validator()->remove('reset_key_sent_on');
+						if($this->User->save($this->request->data))
+						 {
+						       //uncomment after security audit
+						  $this->EmailSend->employeeRegistrationMail($this->request->data);
+					      $this->redirect(array('action'=>'index'));
+						 }
+						 else
+						 {
+						   $this->User->deleteAll(array(				                                                    
+														  'User.id'=>$employee['User']['id'],
+													    ),
+													true	  
+												  );
+					       $this->request->data=NULL;
+					       $this->Session->setFlash('Sorry,Unable to add,please try after some time', 'default', array('class' => 'alert alert-danger'));	 
+						   return $this->redirect(array('controller'=>'users','action'=>'index')); 
+						 } 
+			
+					}
+			  }
+			else
+            {
+			echo $this->Session->setFlash('<button class="close" aria-hidden="true" data-dismiss="alert" type="button">×</button>Unable to Save New User , Please try again later....','default',array('class'=>'alert alert-danger alert-dismissable'));
+            }			
+	  }
+	  
+	  $organizations=$this->User->Organization->find('list',array('fields'=>array('id','organization_name')));
+	  $officeLocations=$this->User->OfficeLocation->find('list',array('fields'=>array('id','location_name')));
+	  //$departments=$this->User->Department->find('list',array('fields'=>array('id','department_name')));
+	  $designations=$this->User->Designation->find('list',array('fields'=>array('id','designation_name')));
+	  $this->set(compact('organizations','officeLocations','designations'));
+   }
+   
+   public function add_vacancy_creator()
+   {
+    if($this->request->is('post'))
+	  { 	
+			$MinimumRole = $this->User->Group->find('first',array(
+																  'fields'=>array('id'),
+																  'conditions'=>array(
+																                      'name'=>'Vacancy Creator'
+																					  )
+																                     )
+													);			
+			$this->request->data['User']['group_id'] = $MinimumRole['Group']['id'];	
+			$this->request->data['User']['ip_address']=$this->request->clientIp();
+			if(empty($this->request->data['User']['profilepic']))
+			{
+			  $this->request->data['User']['profilepic'] = 'default.png';	
+			}
+			$originalPassword=$this->generatePassword();
+			$this->request->data['User']['password']=  md5('p$bALN^nhfDRR'.$originalPassword); 
+			$this->request->data['User']['password_confirm']=$this->request->data['User']['password'];
+			
+            $this->request->data['User']['organization_id'] = $this->Session->read('Auth.User.organization_id'); 
+			
+			$this->User->validator()->remove('password');
+			$this->User->validator()->remove('password_confirm');
+			$this->User->create();
+			if($this->User->save($this->request->data))
+			  {
+				echo $this->Session->setFlash('<button class="close" aria-hidden="true" data-dismiss="alert" type="button">×</button>User has been Successfully saved....','default',array('class'=>'alert alert-success alert-dismissable'));
+				
+				if(!empty($this->request->data['User']['email'])){
+						
+						$employee['User']['id'] = $this->User->getLastInsertId();
+						$this->User->id = $employee['User']['id'];
+						
+						$this->request->data['User']['mail_key']=md5(9*213+$employee['User']['id']);
+						$employee['User']['mail_key']=$this->request->data['User']['mail_key'];
+						$this->request->data['User']['forget_password_key']=md5($this->generateForgotPasswordKey());
+						$employee['User']['forget_password_key']=$this->request->data['User']['forget_password_key'];
+						$db = $this->User->getDataSource(); 
+						$this->request->data['User']['reset_key_sent_on']= $db->expression('NOW()');
+						$this->User->validator()->remove('reset_key_sent_on');
+						if($this->User->save($this->request->data))
+						 {
+						       //uncomment after security audit
+						  $this->EmailSend->employeeRegistrationMail($this->request->data);
+					      $this->redirect(array('action'=>'index'));
+						 }
+						 else
+						 {
+						   $this->User->deleteAll(array(				                                                    
+														  'User.id'=>$employee['User']['id'],
+													    ),
+													true	  
+												  );
+					       $this->request->data=NULL;
+					       $this->Session->setFlash('Sorry,Unable to add,please try after some time', 'default', array('class' => 'alert alert-danger'));	 
+						   return $this->redirect(array('controller'=>'users','action'=>'index')); 
+						 } 
+			
+					}
+			  }
+			else
+            {
+			echo $this->Session->setFlash('<button class="close" aria-hidden="true" data-dismiss="alert" type="button">×</button>Unable to Save New User , Please try again later....','default',array('class'=>'alert alert-danger alert-dismissable'));
+            }			
+	  }
+	  
+	  $organizations=$this->User->Organization->find('list',array('fields'=>array('id','organization_name')));
+	  $officeLocations=$this->User->OfficeLocation->find('list',array('fields'=>array('id','location_name')));
+	  //$departments=$this->User->Department->find('list',array('fields'=>array('id','department_name')));
+	  $designations=$this->User->Designation->find('list',array('fields'=>array('id','designation_name')));
+	  $this->set(compact('organizations','officeLocations','designations'));
+   }
+   
+   public function add_vacancy_approver()
+   {
+    if($this->request->is('post'))
+	  { 	
+			$MinimumRole = $this->User->Group->find('first',array(
+																  'fields'=>array('id'),
+																  'conditions'=>array(
+																                      'name'=>'Vacancy Approver'
+																					  )
+																                     )
+													);			
+			$this->request->data['User']['group_id'] = $MinimumRole['Group']['id'];	
+			$this->request->data['User']['ip_address']=$this->request->clientIp();
+			if(empty($this->request->data['User']['profilepic']))
+			{
+			  $this->request->data['User']['profilepic'] = 'default.png';	
+			}
+			$originalPassword=$this->generatePassword();
+			$this->request->data['User']['password']=  md5('p$bALN^nhfDRR'.$originalPassword); 
+			$this->request->data['User']['password_confirm']=$this->request->data['User']['password'];
+			$this->request->data['User']['organization_id'] = $this->Session->read('Auth.User.organization_id'); 		
+			$this->User->validator()->remove('password');
+			$this->User->validator()->remove('password_confirm');
+			$this->User->create();
+			if($this->User->save($this->request->data))
+			  {
+				echo $this->Session->setFlash('<button class="close" aria-hidden="true" data-dismiss="alert" type="button">×</button>User has been Successfully saved....','default',array('class'=>'alert alert-success alert-dismissable'));
+				
+				if(!empty($this->request->data['User']['email'])){
+						
+						$employee['User']['id'] = $this->User->getLastInsertId();
+						$this->User->id = $employee['User']['id'];
+						
+						$this->request->data['User']['mail_key']=md5(9*213+$employee['User']['id']);
+						$employee['User']['mail_key']=$this->request->data['User']['mail_key'];
+						$this->request->data['User']['forget_password_key']=md5($this->generateForgotPasswordKey());
+						$employee['User']['forget_password_key']=$this->request->data['User']['forget_password_key'];
+						$db = $this->User->getDataSource(); 
+						$this->request->data['User']['reset_key_sent_on']= $db->expression('NOW()');
+						$this->User->validator()->remove('reset_key_sent_on');
+						if($this->User->save($this->request->data))
+						 {
+						       //uncomment after security audit
+						  $this->EmailSend->employeeRegistrationMail($this->request->data);
+					      $this->redirect(array('action'=>'index'));
+						 }
+						 else
+						 {
+						   $this->User->deleteAll(array(				                                                    
+														  'User.id'=>$employee['User']['id'],
+													    ),
+													true	  
+												  );
+					       $this->request->data=NULL;
+					       $this->Session->setFlash('Sorry,Unable to add,please try after some time', 'default', array('class' => 'alert alert-danger'));	 
+						   return $this->redirect(array('controller'=>'users','action'=>'index')); 
+						 } 
+			
+					}
+			  }
+			else
+            {
+			echo $this->Session->setFlash('<button class="close" aria-hidden="true" data-dismiss="alert" type="button">×</button>Unable to Save New User , Please try again later....','default',array('class'=>'alert alert-danger alert-dismissable'));
+            }			
+	  }
+	  
+	  $organizations=$this->User->Organization->find('list',array('fields'=>array('id','organization_name')));
+	  $officeLocations=$this->User->OfficeLocation->find('list',array('fields'=>array('id','location_name')));
+	  //$departments=$this->User->Department->find('list',array('fields'=>array('id','department_name')));
+	  $designations=$this->User->Designation->find('list',array('fields'=>array('id','designation_name')));
+	  $this->set(compact('organizations','officeLocations','designations'));
+   }
+   
+   public function add_officer()
+   {
+    if($this->request->is('post'))
+	  { 	
+			$MinimumRole = $this->User->Group->find('first',array(
+																  'fields'=>array('id'),
+																  'conditions'=>array(
+																                      'name'=>'Officer'
+																					  )
+																                     )
+													);			
+			$this->request->data['User']['group_id'] = $MinimumRole['Group']['id'];	
+			$this->request->data['User']['ip_address']=$this->request->clientIp();
+			if(empty($this->request->data['User']['profilepic']))
+			{
+			  $this->request->data['User']['profilepic'] = 'default.png';	
+			}
+			$originalPassword=$this->generatePassword();
+			$this->request->data['User']['password']=  md5('p$bALN^nhfDRR'.$originalPassword); 
+			$this->request->data['User']['password_confirm']=$this->request->data['User']['password'];
+			$this->request->data['User']['organization_id'] = $this->Session->read('Auth.User.organization_id'); 		
+			$this->User->validator()->remove('password');
+			$this->User->validator()->remove('password_confirm');
+			$this->User->create();
+			if($this->User->save($this->request->data))
+			  {
+				echo $this->Session->setFlash('<button class="close" aria-hidden="true" data-dismiss="alert" type="button">×</button>User has been Successfully saved....','default',array('class'=>'alert alert-success alert-dismissable'));
+				
+				if(!empty($this->request->data['User']['email'])){
+						
+						$employee['User']['id'] = $this->User->getLastInsertId();
+						$this->User->id = $employee['User']['id'];
+						
+						$this->request->data['User']['mail_key']=md5(9*213+$employee['User']['id']);
+						$employee['User']['mail_key']=$this->request->data['User']['mail_key'];
+						$this->request->data['User']['forget_password_key']=md5($this->generateForgotPasswordKey());
+						$employee['User']['forget_password_key']=$this->request->data['User']['forget_password_key'];
+						$db = $this->User->getDataSource(); 
+						$this->request->data['User']['reset_key_sent_on']= $db->expression('NOW()');
+						$this->User->validator()->remove('reset_key_sent_on');
+						if($this->User->save($this->request->data))
+						 {
+						       //uncomment after security audit
+						  $this->EmailSend->employeeRegistrationMail($this->request->data);
+					      $this->redirect(array('action'=>'index'));
+						 }
+						 else
+						 {
+						   $this->User->deleteAll(array(				                                                    
+														  'User.id'=>$employee['User']['id'],
+													    ),
+													true	  
+												  );
+					       $this->request->data=NULL;
+					       $this->Session->setFlash('Sorry,Unable to add,please try after some time', 'default', array('class' => 'alert alert-danger'));	 
+						   return $this->redirect(array('controller'=>'users','action'=>'index')); 
+						 } 
+			
+					}
+			  }
+			else
+            {
+			echo $this->Session->setFlash('<button class="close" aria-hidden="true" data-dismiss="alert" type="button">×</button>Unable to Save New User , Please try again later....','default',array('class'=>'alert alert-danger alert-dismissable'));
+            }			
+	  }
+	  
+	  $organizations=$this->User->Organization->find('list',array('fields'=>array('id','organization_name')));
+	  $officeLocations=$this->User->OfficeLocation->find('list',array('fields'=>array('id','location_name')));
+	  //$departments=$this->User->Department->find('list',array('fields'=>array('id','department_name')));
+	  $designations=$this->User->Designation->find('list',array('fields'=>array('id','designation_name')));
+	  $this->set(compact('organizations','officeLocations','designations'));
+   }
+   
+   
+   public function index()
+   {
+	   //Default Conditions
+		$conditions=array();
+		if($this->Session->read('Auth.User.Group.name')!='Super Admin')
+		{
+		 $conditions['User.organization_id'] = $this->Session->read('Auth.User.organization_id');	
+		}
+		$order=array('User.id' => 'desc');
+		$recursive=0;
+		$limit=10;
+		//If any organization is selected
+                if(isset($this->request->query['email']) && $this->request->query['email']!='')
+                {
+                    $conditions['User.email']=$this->request->query['email'];
+                }
+		
+		//If any organization is selected
+                if(isset($this->request->query['organization_id']) && $this->User->Organization->exists($this->request->query['organization_id']))
+                {
+                    $conditions['User.organization_id']=$this->request->query['organization_id'];
+                }
+		
+		$this->Paginator->settings = 
+                                    array(
+                                            'conditions'=>$conditions,
+                                            'order'=>$order,
+                                            'limit'=>$limit
+                                        );
+		//You can use the 3rd parameter of PaginatorComponent::paginate() to restrict the columns that sorting will be done on                    
+            $users = $this->Paginator->paginate('User',array(),array('User.email','Organization.organization_name'));								
+	  //pr($users);
+	  $organizations=$this->User->Organization->find('list',array('fields'=>array('id','organization_name'),'recursive'=>-1));
+	 
+	  
+     $this->set(compact('users','organizations'));
+   }
+ 
+   public function edit_user($id=null)
+   {
+		if(!$this->User->exists($id)) 
+			  {
+				throw new NotFoundException(__('Invalid User'));
+			  }
+		
+        $this->User->Behaviors->load('Containable');		
+		$userGroup=  $this->User->find('first', array('conditions' => array('User.' . $this->User->primaryKey => $id),
+		                                              'fields'=>array('id','organization_id'),
+													  'contain'=>array(
+													                   'Group'=>array(
+																	                  'fields'=>'level'
+																					 )			 
+																	  )
+													  ));	
+													  
+		if($this->Session->read('Auth.User.Group.level')>=$userGroup['Group']['level'])
+	     {
+		  throw new NotFoundException('You are not authorised to edit details of this user');
+		 }
+		 
+		 $permissionDependency=$this->Session->read('Auth.User.Group.dependency');
+		 $loggedInUserOrganization=$this->Session->read('Auth.User.organization_id');
+	    
+		
+		if($permissionDependency=='organization' && $loggedInUserOrganization!=$userGroup['User']['organization_id'])
+		  {
+			throw new MethodNotAllowedException(__('You are not authorized to edit this user. User does not belong to your organization'));
+		  }
+		 
+		 
+		 
+		 $options = array('conditions' => array('User.' . $this->User->primaryKey => $id));
+			$datafromdb = $this->User->find('first', $options);
+		 
+		if ($this->request->is(array('post','put'))) 
+		  {
+			$this->request->data['User']['modified_by_user_id'] = $this->Session->read('Auth.User.id');
+			$this->request->data['User']['modified_on'] = $this->User->getDataSource()->expression('NOW()');  
+			if ($this->User->save($this->request->data)) 
+				{
+				$this->Session->setFlash('<button class="close" aria-hidden="true" data-dismiss="alert" type="button">×</button>User has been Successfully edited....','default',array('class'=>'alert alert-success alert-dismissable'));	
+				return $this->redirect(array('action' => 'index'));
+				} 
+			else {
+				  $this->Session->setFlash('Sorry unable to edit User , Please try again later....','default',array('class'=>'alert alert-danger'));
+				 }
+		  } 
+		else 
+		   {
+			$this->request->data = $datafromdb;
+		   }
+	  $organizations=$this->User->Organization->find('list',array('fields'=>array('id','organization_name')));
+	  $officeLocations=$this->User->OfficeLocation->find('list',array('fields'=>array('id','location_name')));
+	  $departments=$this->User->Department->find('list',array('fields'=>array('id','department_name')));
+	  $designations=$this->User->Designation->find('list',array('fields'=>array('id','designation_name')));
+	  $this->set(compact('organizations','officeLocations','departments','designations'));	   
+   }
+   
+   
+     //Login 
+    public function login() 
+	{
+	
+		//Calling login.ctp theme under layouts
+   	    //$this->layout='login' ;
+		 if(!$this->request->is('ajax'))
+             { 
+               $this->redirect('/#login', 303, true);
+			 }
+		$this->autoLayout=false;
+		
+		//For Generating Public and Private Key
+		
+		if($this->request->is('get'))
+		 {	
+		  $RSAkeysizePHP = 1024 ;
+          $rsa = new Crypt_RSA();
+		  extract($rsa->createKey($RSAkeysizePHP));
+          $this->set(compact('publickey'));
+		  
+		  $this->Session->write('private_key',$privatekey);
+		 }
+		
+        if ($this->request->is('post')) 
+		{
+			 
+			 $captcha = $this->Session->read('captcha_code');
+			 $this->Session->delete('captcha_code');
+			 
+			 //For Captcha Verification
+			
+			if ($captcha == $this->request->data['User']['captcha'] )
+			    {
+				    
+                 //For Decryption Of The Password
+                     					
+					$rsa = new Crypt_RSA();
+				    $rsa->setEncryptionMode(CRYPT_RSA_ENCRYPTION_PKCS1);
+				    
+					$rsa->loadKey($this->Session->read('private_key'));
+				    $RSAbase_decodedPHP = base64_decode($this->request->data['User']['password']);
+				    $RSAdecryptedPHP = $rsa->decrypt($RSAbase_decodedPHP);	
+				    
+                    $this->Session->delete('private_key');					
+				
+					$this->request->data['User']['password'] = md5($RSAdecryptedPHP);
+
+	
+					
+						if ($this->Auth->login())
+						{
+							
+							// Check if the user needs to change their password
+					if ($this->Session->read('Auth.User.force_password_change') == '0') {
+						$this->Session->setFlash('Please Reset your password', 'default', array('class' => 'alert alert-success'));
+						echo 'refreshf';
+						exit;
+						// return $this->redirect(array('controller' => 'users', 'action' => 'change_password'));
+					}
+
+							
+							$this->request->data['LoginLog']=array(
+																
+																 'username'=>$this->request->data['User']['username'],
+																 'ip_address'=>$this->request->clientIp(),
+																 'user_agent'=>$this->request->header('User-Agent'),
+																//'session_id'=>$this->Session->id(),
+																//'process_id'=>posix_getpid(),
+																  'process_id'=>getmypid(),
+																  'status'=>'Successful'
+																);
+										//pr($this->request->data); exit;						
+                                        $this->LoginLog->create();
+                                        $this->LoginLog->save($this->request->data);
+							
+								$user=$this->Session->read('Auth.User');
+								$acos = $this->Acl->Aco->find('threaded', array(
+																'conditions'=>array(
+																	'Aco.parent_id !='=>null,
+																
+																),
+																
+																'order' => 'Aco.lft ASC',
+																'recursive' => -1
+																));
+								$AuthrizedControllerORAction=array();								
+								foreach($acos as $controller)
+								{
+									$controllerName=$controller['Aco']['alias'];
+									foreach($controller['children'] as $action)
+									{
+										$actionName=$action['Aco']['alias'];
+										//echo strtolower($controllerName.'/'.$actionName);
+										//$isAccessable=$this->Acl->check(array('User' => array('id'=>3)),'AccessControl');
+										$isAccessable=$this->Acl->check(array('User' => $user), strtolower($controllerName.'/'.$actionName));
+										//pr($isAccessable);exit;
+										if($isAccessable)
+										{
+											$AuthrizedControllerORAction[]=$controller['Aco']['id'];
+											$AuthrizedControllerORAction[]=$action['Aco']['id'];
+										}
+										$this->Session->write('ACL1.'.$controllerName.'.'.$actionName,$isAccessable);
+									}
+								} //pr(array_unique($AuthrizedControllerORAction));exit;
+								$this->Session->write('AuthrizedControllerORAction',array_unique($AuthrizedControllerORAction));               
+							
+							
+							
+							
+							
+							$this->Session->setFlash(__('<button class="close" aria-hidden="true" data-dismiss="alert" type="button">x</button><center>Welcome ,'.' '.$this->Session->read('Auth.User.f_name').' '.$this->Session->read('Auth.User.l_name').'</center>'),'default',array('class'=>'alert alert-success alert-dismissable'));
+							//return $this->redirect($this->Auth->redirectUrl());
+							//return $this->redirect(array('controller'=>'dashboard','action'=>'index'));
+							 echo 'refresh';exit;
+						}
+           else
+		   {  
+	   
+	              $RSAkeysizePHP = 1024 ;
+				  $rsa = new Crypt_RSA();
+				  extract($rsa->createKey($RSAkeysizePHP));
+				  $this->set(compact('publickey'));
+				  
+				  $this->Session->write('private_key',$privatekey); 
+	   
+	         $this->request->data['LoginLog']=array(
+													 'username'=>$this->request->data['User']['username'],
+													 'ip_address'=>$this->request->clientIp(),
+													 'user_agent'=>$this->request->header('User-Agent'),
+												//	 'session_id'=>$this->Session->id(),
+												//	  'process_id'=>posix_getpid(),
+													  'process_id'=>getmypid(),
+													  'status'=>'Failed-Wrong Credentials'
+													  
+													);
+                           $this->LoginLog->create();
+                           $this->LoginLog->save($this->request->data); 
+	   
+	   
+			$this->Session->setFlash(__('Your username or password was incorrect'),'default',array('class'=>'alert alert-danger'),'msg');
+           }
+		}
+		else
+		{
+			
+		 $RSAkeysizePHP = 1024 ;
+          $rsa = new Crypt_RSA();
+		  extract($rsa->createKey($RSAkeysizePHP));
+          $this->set(compact('publickey'));
+		  
+		  $this->Session->write('private_key',$privatekey);	
+			
+		 $this->request->data['LoginLog']=array(
+												 'username'=>$this->request->data['User']['username'],
+												 'ip_address'=>$this->request->clientIp(),
+												 'user_agent'=>$this->request->header('User-Agent'),
+											//	 'session_id'=>$this->Session->id(),
+											//	  'process_id'=>posix_getpid(),
+												  'process_id'=>getmypid(),
+												  'status'=>'Failed-Wrong Captcha'
+												  
+												);
+                           $this->LoginLog->create();
+                           $this->LoginLog->save($this->request->data); 	
+			
+		 $this->Session->setFlash(__('Your Entered Captcha Code Does not match'),'default',array('class'=>'alert alert-danger'),'msg');	
+		}
+		$this->request->data['User']=NULL;	
+			$this->render('login');
+    }
+  }
+ public function logout()
+	{ 
+	    if(!$this->request->is('post'))
+		{
+			throw new MethodNotAllowedException();
+		}
+		
+		if(empty($this->Session->read('Auth.User.username')))
+		{
+		 	$username = 'session-timeout';
+		}
+		else
+		{
+			$username = $this->Session->read('Auth.User.username');
+		}
+		
+		
+		$this->request->data['LoginLog']=array(
+											 //'email'=>$this->Session->read('Auth.User.email'),
+											 'username'=>$username,
+											 
+											 'ip_address'=>$this->request->clientIp(),
+											 'user_agent'=>$this->request->header('User-Agent'),
+										//   'session_id'=>$this->Session->id(),
+									    //   'process_id'=>posix_getpid(),
+											  'process_id'=>getmypid(),
+											  'status'=>'Logged Out'
+											  
+											);
+                           $this->LoginLog->create();
+                           $this->LoginLog->save($this->request->data); 
+		
+		$this->Session->destroy();
+		$this->Session->setFlash(__('<button class="close" aria-hidden="true" data-dismiss="alert" type="button">×</button><center>You have been logged out.</center>'),'default',array('class'=>'alert alert-success alert-dismissable'),'msg');
+        $this->Session->write('open_login',true);
+		$this->redirect($this->Auth->logout());		
+	}
+
+   public function change_pwd_logout()
+	{ 
+	    
+		$this->request->data['LoginLog']=array(
+											 //'email'=>$this->Session->read('Auth.User.email'),
+											 'username'=>$this->Session->read('Auth.User.username'),
+											 
+											 'ip_address'=>$this->request->clientIp(),
+											 'user_agent'=>$this->request->header('User-Agent'),
+										//   'session_id'=>$this->Session->id(),
+									    //   'process_id'=>posix_getpid(),
+											  'process_id'=>getmypid(),
+											  'status'=>'Logged Out'
+											  
+											);
+                           $this->LoginLog->create();
+                           $this->LoginLog->save($this->request->data); 
+		
+		$this->Session->destroy();
+		$this->Session->setFlash(__('<button class="close" aria-hidden="true" data-dismiss="alert" type="button">x</button><center>Your Password has been changed successfully, please login with your new password.</center>'),'default',array('class'=>'alert alert-success alert-dismissable'),'msg');
+        $this->Session->write('open_login',true);
+		$this->redirect($this->Auth->logout());		
+	}	
+	/*
+	public function get_captcha()
+	{
+		$this->autoRender = false;
+		App::import('Component','Captcha');
+			
+		//generate random charcters for captcha
+		//$random = mt_rand(100, 99999);	
+		//$random='AB657798';
+                //$possible = '123456789abcdefghijklmnopqrstuvwxyz%&^#@!+=ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+				$possible = '123456789';
+                $code = '';$i = 0;
+                while ($i < 7) { 
+                  $code .= substr($possible, mt_rand(0, strlen($possible)-1), 1);
+                  $i++;
+                }
+                $random=$code;
+		//save characters in session
+		$this->Session->write('captcha_code', $random);  
+			
+		$settings = array(
+		  'characters' => $random,   
+		  'winHeight' => 50,         // captcha image height 
+		  'winWidth' => 310,		   // captcha image width
+		  'fontSize' => 20,          // captcha image characters fontsize 
+		  'fontPath' => WWW_ROOT.'tahomabd.ttf',    // captcha image font
+		  'noiseColor' => '#ccc',
+		  'bgColor' => '#fff',
+		  'noiseLevel' => '100',
+		  'textColor' => '#000'
+		);
+			
+		$img = $this->Captcha->ShowImage($settings);
+		echo $img; 
+	}
+	*/
+	
+	public function get_captcha()
+{
+    $this->autoRender = false;
+    App::import('Component', 'Captcha');
+
+    // Generate random alphanumeric string (6 characters, case-sensitive)
+    $possible = '123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    $code = '';
+    $i = 0;
+    while ($i < 6) {  // Change length to 6
+        $code .= substr($possible, mt_rand(0, strlen($possible) - 1), 1);
+        $i++;
+    }
+    $random = $code;
+
+    // Save the generated captcha code into the session
+    $this->Session->write('captcha_code', $random);
+
+    // Captcha image settings
+    $settings = array(
+        'characters' => $random,
+        'winHeight' => 50,         // captcha image height
+        'winWidth' => 310,         // captcha image width
+        'fontSize' => 20,          // captcha image characters font size
+        'fontPath' => WWW_ROOT . 'tahomabd.ttf',    // captcha image font
+        'noiseColor' => '#ccc',    // background noise color
+        'bgColor' => '#fff',       // background color
+        'noiseLevel' => '100',     // level of noise
+        'textColor' => '#000'      // text color
+    );
+
+    // Generate and output captcha image
+    $img = $this->Captcha->ShowImage($settings);
+    echo $img;
+}
+	
+	
+	
+	public function user_registration()
+	{
+		//$this->layout='register';
+		$this->layout='home';
+		//pr($this->request->data); exit;
+		
+		$register = true;  
+		if($this->request->is('post'))
+		{
+			$captcha = $this->Session->read('captcha_code');
+			$this->Session->delete('captcha_code');
+			
+			if ($captcha == $this->request->data['User']['captcha'])
+			    {
+					$minimum = $this->User->Group->find('first',array(
+						'fields'=>array('MAX(level) as MinimumLevel')));
+
+					$MinimumRole = $this->User->Group->find('first',array(
+						'fields'=>array('id'),
+						'conditions'=>array('level'=>$minimum[0]['MinimumLevel'])));		
+					$this->request->data['User']['group_id'] = $MinimumRole['Group']['id'];
+					
+					
+					$this->request->data['InformationUser']['current_status'] = 'registered';
+					
+					//For Checking whether User belongs to other organization
+					$this->request->data['InformationUser']['dummy_orgn_id'] = $this->request->data['User']['organization_id']; 
+					
+					
+					
+					if(empty($this->request->data['User']['profilepic']))
+						{
+						  $this->request->data['User']['profilepic'] = 'default.png';	
+						}
+						
+					$originalPassword=$this->generatePassword();
+					$this->request->data['User']['password']=  md5($originalPassword); 
+					$this->request->data['User']['password_confirm']=$this->request->data['User']['password'];
+					
+					$this->User->validator()->remove('password');
+					$this->User->validator()->remove('password_confirm');
+					$this->User->InformationUser->validator()->remove('o_address');
+					$this->User->InformationUser->validator()->remove('r_address');
+					$this->User->InformationUser->validator()->remove('other_disability');
+                    $this->User->InformationUser->validator()->remove('other_current_organization');
+					$this->User->InformationUser->validator()->remove('nature_of_present_emp');
+					$this->User->InformationUser->validator()->remove('present_post');
+					$this->User->InformationUser->validator()->remove('statement');
+					$this->User->InformationUser->validator()->remove('additional_info');
+					$this->User->InformationUser->validator()->remove('other_parent_organization');
+					$this->User->create();
+				if($this->User->saveAll($this->request->data))
+				{
+				  $this->request->data['User']['password']=  $originalPassword;
+
+					if(!empty($this->request->data['User']['mobile_number']))
+					{
+						//$this->SendSms('Hello ' .ucfirst($this->request->data['User']['f_name'].' ').ucfirst($this->request->data['User']['l_name']).', Your password is '.$this->request->data['User']['password'] ,$this->request->data['Employee']['mobile_number']);
+					}
+					if(!empty($this->request->data['User']['email'])){
+						
+						$employee['User']['id'] = $this->User->getLastInsertId();
+						$this->User->id = $employee['User']['id'];
+						
+						$this->request->data['User']['mail_key']=md5(9*213+$employee['User']['id']);
+						$employee['User']['mail_key']=$this->request->data['User']['mail_key'];
+						$this->request->data['User']['forget_password_key']=md5($this->generateForgotPasswordKey());
+						$employee['User']['forget_password_key']=$this->request->data['User']['forget_password_key'];
+						$db = $this->User->getDataSource(); 
+						$this->request->data['User']['reset_key_sent_on']= $db->expression('NOW()');
+						$this->User->validator()->remove('reset_key_sent_on');
+						if($this->User->save($this->request->data))
+						 {
+						       //uncomment after security audit
+						  $this->EmailSend->employeeRegistrationMail($this->request->data);
+					     }
+						 else
+						 {
+						   $this->User->deleteAll(array(				                                                    
+														  'User.id'=>$employee['User']['id'],
+													    ),
+													true	  
+												  );
+					       $this->request->data=NULL;
+					       $this->Session->setFlash('Sorry,Unable to register,please try after some time', 'default', array('class' => 'alert alert-danger'));	 
+						   return $this->redirect(array('controller'=>'users','action'=>'user_registration')); 
+						 } 
+			
+					}
+				
+
+					 echo $this->Session->setFlash('<button class="close" aria-hidden="true" data-dismiss="alert" type="button">x</button>You have registered successfully and your password has been sent to your email.... , Kindly Sign in to continue','default',array('class'=>'alert alert-success alert-dismissable'),'msg');
+					 $register = false;
+					 //$this->Session->write('open_login',true);
+                     					 
+				}
+					 else
+					 {  //pr($this->User->InformationUser->invalidFields()); 
+						echo $this->Session->setFlash('<button class="close" aria-hidden="true" data-dismiss="alert" type="button">×</button>Sorry,Unable to register,Please try again later....','default',array('class'=>'alert alert-danger alert-dismissable'),'msg'); 
+					  
+					 }
+		  }	
+         
+          else
+		  {
+			$this->request->data['User']['captcha']=NULL;  
+		    $this->Session->setFlash(__('Your Entered Captcha Code Does not match'),'default',array('class'=>'alert alert-danger'),'msg');	 
+		  }			  
+		}
+		
+		//$this->set('notices',$this->Notice->find('all'));
+		//$this->set('vacancies',$this->Vacancy->find('all',array('conditions'=>array('status'=>'Approved'))));		
+		
+	    $sOBs= $this->User->InformationUser->State->find('list',array('fields'=>array('id','state_name')));  //For Selecting State of Birth	
+        $nationalities = $this->User->InformationUser->Nationality->find('list',array('fields'=>array('id','nationality_name')));
+	   //$states= $this->User->State->find('list',array('fields'=>array('id','state_name')));
+	   //$cities= $this->User->City->find('list',array('fields'=>array('id','city_name')));
+	   $organizations = $this->User->Organization->find('list',array('fields'=>array('id','organization_name'),
+	                                                                 'order'=>'id'
+																	));
+	   $this->set(compact('sOBs','nationalities','organizations','register'));
+       	 
+		 
+    }
+
+  
+  	function generatePassword()
+	{
+            $upperC=substr(str_shuffle( 'ABCDEFGHIJKLMNOPQRSTUVWXYZ' ),0,1);
+            $lowerC=substr(str_shuffle( 'abcdefghijklmnopqrstuvwxyz' ),0,1);
+            $dig=substr(str_shuffle( '0123456789' ),0,1);
+            $specialC=substr(str_shuffle( '!"@#$&\'()*+,-./:;<=>?@[]\\^_`{}|~' ),0,1);
+			
+			//Audit change retrn statement bakc to original afer security audit
+            return substr( $upperC.$lowerC.$dig.$specialC.str_shuffle( 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$' ) , 0 , 10 );
+		   //return 'admin';
+	}
+	
+	function generateForgotPasswordKey()
+	{
+            $upperC=substr(str_shuffle( 'ABCDEFGHIJKLMNOPQRSTUVWXYZ' ),0,1);
+            $lowerC=substr(str_shuffle( 'abcdefghijklmnopqrstuvwxyz' ),0,1);
+            $dig=substr(str_shuffle( '0123456789' ),0,1);
+            $specialC=substr(str_shuffle( '!"@#$&\'()*+,-./:;<=>?@[]\\^_`{}|~' ),0,1);
+			
+			return substr( $upperC.$lowerC.$dig.$specialC.str_shuffle( 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$' ) , 0 , 10 );
+	}
+	
+	
+  public function basic_info()
+  {
+	$this->User->id=$this->Session->read('Auth.User.id');
+	$infos = $this->User->InformationUser->find('first',array('conditions'=>array(
+																				  'user_id'=>$this->Session->read('Auth.User.id')
+																				  ),
+															  'fields'=>array('id','current_status')					  
+															  )
+												);
+    $currentStatus = $infos['InformationUser']['current_status'];												
+	if($this->request->is(array('post','put')))
+	  { 
+        if(($currentStatus == 'registered'))
+		 {
+	      $this->request->data['InformationUser']['current_status'] = 'step1_bi';
+		 }
+		$this->User->InformationUser->validator()->remove('o_address');
+        $this->User->InformationUser->validator()->remove('r_address');
+		$this->User->InformationUser->validator()->remove('other_disability');
+		$this->User->InformationUser->validator()->remove('statement');
+		$this->User->InformationUser->validator()->remove('additional_info');
+		$this->User->InformationUser->validator()->remove('other_parent_organization');
+		$this->User->InformationUser->validator()->remove('other_current_organization');
+		$this->User->InformationUser->validator()->remove('nature_of_present_emp');
+		$this->User->InformationUser->validator()->remove('present_post');
+		if($this->User->saveAssociated($this->request->data))
+		  {
+			return $this->redirect(array('action'=>'contact_details'));
+		  }
+		else
+		  {  
+			echo $this->Session->setFlash('<button class="close" aria-hidden="true" data-dismiss="alert" type="button">×</button>Unable to save Personal Information....','default',array('class'=>'alert alert-danger alert-dismissable'));
+		  }			
+          		
+	  }	
+	
+		$options = array('conditions' => array('User.' . $this->User->primaryKey => $this->Session->read('Auth.User.id')));
+		$this->request->data = $this->User->find('first', $options);
+		$this->request->data['InformationUser']['d_o_b'] = date('d-m-Y',strtotime($this->request->data['InformationUser']['d_o_b']));
+		
+		$religion      = $this->request->data['InformationUser']['religion'];
+		$maritalStatus = $this->request->data['InformationUser']['marital_status'];
+		$hobbies = $this->request->data['InformationUser']['hobbies'];
+	    $sOBs= $this->User->InformationUser->State->find('list',array('fields'=>array('id','state_name')));  //For Selecting State of Birth	
+        $nationalities = $this->User->InformationUser->Nationality->find('list',array('fields'=>array('id','nationality_name')));  
+    	$disabilities  = $this->User->InformationUser->Disability->find('list',array('fields'=>array('id','type_of_disability'),
+		                                                                             'order'=>'type_of_disability'
+																					 )); 
+		$this->set(compact('sOBs','nationalities','religion','maritalStatus','hobbies','disabilities'));		
+   }
+  
+  public function contact_details()
+  {
+	$this->User->id=$this->Session->read('Auth.User.id');
+    $infos = $this->User->InformationUser->find('first',array('conditions'=>array(
+																				  'user_id'=>$this->Session->read('Auth.User.id')
+																				  ),
+															  'fields'=>array('id','current_status')					  
+															  )
+												);
+    $currentStatus = $infos['InformationUser']['current_status'];
+	  if($currentStatus=='registered')
+	   {
+		echo $this->Session->setFlash('<button class="close" aria-hidden="true" data-dismiss="alert" type="button">×</button>Kindly fill the Personal Information first....','default',array('class'=>'alert alert-danger alert-dismissable'));   		   
+		return $this->redirect(array('controller'=>'users','action'=>'basic_info'));
+	   }  
+	
+	if($this->request->is(array('post','put')))
+     {
+		if(($currentStatus == 'registered') || ($currentStatus == 'step1_bi'))
+		 {  
+          $this->request->data['InformationUser']['current_status'] = 'step2_cond';
+	     }
+		
+		$this->User->InformationUser->validator()->remove('o_address');
+        $this->User->InformationUser->validator()->remove('r_address');
+		$this->User->InformationUser->validator()->remove('other_disability');
+		$this->User->InformationUser->validator()->remove('statement');
+		$this->User->InformationUser->validator()->remove('additional_info');
+		$this->User->InformationUser->validator()->remove('other_parent_organization');
+		$this->User->InformationUser->validator()->remove('other_current_organization');
+		$this->User->InformationUser->validator()->remove('nature_of_present_emp');
+		$this->User->InformationUser->validator()->remove('present_post'); 
+	   
+	   if($this->User->saveAssociated($this->request->data))
+	   {
+		  return $this->redirect(array('controller'=>'user_qualifications','action'=>'add')); 
+	   }		
+       else
+	   {
+		echo $this->Session->setFlash('<button class="close" aria-hidden="true" data-dismiss="alert" type="button">×</button>Sorry,unable to save Education Details....','default',array('class'=>'alert alert-danger alert-dismissable'));   
+	   }   
+	 }
+     else 
+	   {
+		$options = array('conditions' => array('User.' . $this->User->primaryKey => $this->Session->read('Auth.User.id')));
+		$this->request->data = $this->User->find('first', $options);
+	   }
+      $oStates = $this->User->InformationUser->State->find('list',array('fields'=>array('id','state_name')));
+      $rStates = $this->User->InformationUser->State->find('list',array('fields'=>array('id','state_name')));
+	  $oCityId = $this->request->data['InformationUser']['o_city_id'];
+	  $rCityId = $this->request->data['InformationUser']['r_city_id'];
+	  $this->set(compact('oStates','rStates','oCityId','rCityId'));	  
+  }
+  
+  /* public function education_details()
+  {
+	$this->User->id=$this->Session->read('Auth.User.id');  
+	if($this->request->is('post'))
+     { 
+        $this->request->data['UserQualification']['y_o_p']=$this->request->data['UserQualification']['y_o_p']['year']; 
+        $this->User->UserQualification->create();
+	   if($this->User->UserQualification->save($this->request->data))
+	   {
+		echo $this->Session->setFlash('<button class="close" aria-hidden="true" data-dismiss="alert" type="button">×</button>Education Successfully Added....','default',array('class'=>'alert alert-success alert-dismissable'));      
+	   }		
+       else
+	   {
+		echo $this->Session->setFlash('<button class="close" aria-hidden="true" data-dismiss="alert" type="button">×</button>Sorry,unable to save Education Details....','default',array('class'=>'alert alert-danger alert-dismissable'));   
+	   }   
+	 }
+    
+	$educationQualifications= $this->User->UserQualification->EducationQualification->find('list',array('fields'=>array('id','education_qualification')));
+	$this->set(compact('educationQualifications'));
+	$this->set('educations',$this->User->UserQualification->find('all'));  
+  } */
+  
+  public function current_service_details()
+  {
+	$this->User->id=$this->Session->read('Auth.User.id'); 	
+	$infos = $this->User->InformationUser->find('first',array('conditions'=>array(
+																				  'user_id'=>$this->Session->read('Auth.User.id')
+																				  ),
+															  'fields'=>array('id','current_status')					  
+															  )
+												);
+    $currentStatus = $infos['InformationUser']['current_status'];
+	
+	if($currentStatus=='registered')
+	   {
+		echo $this->Session->setFlash('<button class="close" aria-hidden="true" data-dismiss="alert" type="button">×</button>Kindly fill the Personal Information first....','default',array('class'=>'alert alert-danger alert-dismissable'));   		   
+		return $this->redirect(array('controller'=>'users','action'=>'basic_info'));		
+	   }
+    if($currentStatus=='step1_bi')
+	   {
+		echo $this->Session->setFlash('<button class="close" aria-hidden="true" data-dismiss="alert" type="button">×</button>Kindly fill the Contact Details first....','default',array('class'=>'alert alert-danger alert-dismissable'));   		   
+		return $this->redirect(array('controller'=>'users','action'=>'contact_details'));		
+	   }
+    if($currentStatus=='step2_cond')
+	   {
+		echo $this->Session->setFlash('<button class="close" aria-hidden="true" data-dismiss="alert" type="button">×</button>Kindly fill your Qualifications first....','default',array('class'=>'alert alert-danger alert-dismissable'));   		   
+		return $this->redirect(array('controller'=>'user_qualifications','action'=>'add'));		
+	   }    	   
+	
+    if($this->request->is(array('post','put')))
+	{ 
+      if(($currentStatus == 'registered') || ($currentStatus == 'step1_bi') || ($currentStatus == 'step2_cond') || ($currentStatus == 'step3_qd'))
+	   { 
+        $this->request->data['InformationUser']['current_status'] = 'step4_csd';
+	   }
+	   $this->User->InformationUser->validator()->remove('other_disability');
+	   $this->User->InformationUser->validator()->remove('o_address');
+	   $this->User->InformationUser->validator()->remove('r_address');
+	   $this->User->InformationUser->validator()->remove('statement');
+	   $this->User->InformationUser->validator()->remove('additional_info');
+	 if($this->User->InformationUser->save($this->request->data))
+	  {
+	    return $this->redirect(array('controller'=>'user_employment_details','action'=>'add'));
+	  }
+     else
+	  { 
+		echo $this->Session->setFlash('<button class="close" aria-hidden="true" data-dismiss="alert" type="button">×</button>Sorry,unable to save Current Service Details....','default',array('class'=>'alert alert-danger alert-dismissable'));    
+	  }		 
+	}
+   
+		$options = array('conditions' => array('User.' . $this->User->primaryKey => $this->Session->read('Auth.User.id')));
+		$this->request->data = $this->User->find('first', $options);
+		$nameOPOrgn = $this->User->Organization->find('list',array('fields'=>array('id','organization_name')));
+		$currentOrganization = $this->User->Organization->find('list',array('fields'=>array('id','organization_name')));  
+		
+		$this->set(compact('nameOPOrgn','currentOrganization'));
+		  //For Fetching the converted date
+		  if($this->request->data['InformationUser']['d_o_i_appoint']!=NULL)
+		  {  
+		    $this->request->data['InformationUser']['d_o_i_appoint']= date(('d-m-Y'),strtotime($this->request->data['InformationUser']['d_o_i_appoint']));
+		  }
+		  if($this->request->data['InformationUser']['dt_appoint_date']!=NULL)
+		  {			  
+		    $this->request->data['InformationUser']['dt_appoint_date']= date(('d-m-Y'),strtotime($this->request->data['InformationUser']['dt_appoint_date']));
+		  }
+		  if($this->request->data['InformationUser']['d_o_r']!=NULL)
+		   {   
+		    $this->request->data['InformationUser']['d_o_r']= date_format(date_create($this->request->data['InformationUser']['d_o_r']),'d-m-Y');
+	       }
+		  if($this->request->data['InformationUser']['strt_dt_of_pay']!=NULL)
+		  {			  
+		   $this->request->data['InformationUser']['strt_dt_of_pay']= date(('d-m-Y'),strtotime($this->request->data['InformationUser']['strt_dt_of_pay']));
+		  }
+		  if($this->request->data['InformationUser']['cont_reg_appoint_date']!=NULL)
+		  {   
+	       $this->request->data['InformationUser']['cont_reg_appoint_date']= date(('d-m-Y'),strtotime($this->request->data['InformationUser']['cont_reg_appoint_date']));
+          }
+		  // if($this->request->data['InformationUser']['period_of_appoint_dt']!=NULL)
+		  // {  
+		   // $this->request->data['InformationUser']['period_of_appoint_dt']= date(('d-m-Y'),strtotime($this->request->data['InformationUser']['period_of_appoint_dt']));
+	      // }
+	   	
+  }
+
+  public function doc_upload_part1()
+  {
+	$this->User->id = $this->Session->read('Auth.User.id');
+	$info = $this->User->InformationUser->find('first',array('conditions'=>array('user_id'=>$this->Session->read('Auth.User.id')
+	                                                                             ),
+															  'fields'=>array('id','current_status')					 
+															)
+												);
+	$this->User->InformationUser->id = $info['InformationUser']['id'];
+    $currentStatus = $info['InformationUser']['current_status'];
+
+    if($currentStatus=='registered')
+	   {
+		echo $this->Session->setFlash('<button class="close" aria-hidden="true" data-dismiss="alert" type="button">×</button>Kindly fill the Personal Information first....','default',array('class'=>'alert alert-danger alert-dismissable'));   		   
+		return $this->redirect(array('controller'=>'users','action'=>'basic_info'));
+	   }
+    if($currentStatus=='step1_bi')
+	   {
+		echo $this->Session->setFlash('<button class="close" aria-hidden="true" data-dismiss="alert" type="button">×</button>Kindly fill the Contact Details first....','default',array('class'=>'alert alert-danger alert-dismissable'));   		   
+		return $this->redirect(array('controller'=>'users','action'=>'contact_details'));
+	   }
+    if($currentStatus=='step2_cond')
+	   {
+		echo $this->Session->setFlash('<button class="close" aria-hidden="true" data-dismiss="alert" type="button">×</button>Kindly fill the Educational Details first....','default',array('class'=>'alert alert-danger alert-dismissable'));   		   
+		return $this->redirect(array('controller'=>'user_qualifications','action'=>'add'));
+	   } 
+    if($currentStatus=='step3_qd')
+	   {
+		echo $this->Session->setFlash('<button class="close" aria-hidden="true" data-dismiss="alert" type="button">×</button>Kindly fill the Current Service Details first....','default',array('class'=>'alert alert-danger alert-dismissable'));   		   
+		return $this->redirect(array('controller'=>'users','action'=>'current_service_details'));		
+	   }
+    if($currentStatus=='step4_csd')
+	   {
+		echo $this->Session->setFlash('<button class="close" aria-hidden="true" data-dismiss="alert" type="button">×</button>Kindly fill the Employment Details first....','default',array('class'=>'alert alert-danger alert-dismissable'));   		   
+		return $this->redirect(array('controller'=>'user_employment_details','action'=>'add'));
+	   }
+	 	   
+	   
+	if($this->request->is(array('post','put')))
+	{ 
+      if(($currentStatus == 'registered') || ($currentStatus == 'step1_bi') || ($currentStatus == 'step2_cond') || ($currentStatus == 'step3_qd') || ($currentStatus == 'step4_csd') || ($currentStatus == 'step5_expd'))
+	  {
+       $this->User->InformationUser->saveField('current_status','step6_pic');
+	  }
+	 if($this->User->save($this->request->data))
+	 {  
+	   //echo $this->Session->setFlash('<button class="close" aria-hidden="true" data-dismiss="alert" type="button">×</button>Documents Successfully Saved....','default',array('class'=>'alert alert-success alert-dismissable'));    	  
+	   return $this->redirect(array('action'=>'preview')); 
+	 }
+     else
+	 {
+	   echo $this->Session->setFlash('<button class="close" aria-hidden="true" data-dismiss="alert" type="button">×</button>Sorry,unable to save Documents....','default',array('class'=>'alert alert-danger alert-dismissable'));    	 
+	 }		 
+	}
+   else 
+	   {
+		$options = array('conditions' => array('User.' . $this->User->primaryKey => $this->Session->read('Auth.User.id')));
+		$this->request->data = $this->User->find('first', $options);
+	   }	
+  }
+  
+  
+  public function preview()
+  {
+	$this->User->Behaviors->load('Containable');
+	$userInfo = $this->User->find('first',array('conditions'=>array
+	                                                                      ('user_id'=>$this->Session->read('Auth.User.id')
+																		  ),
+	                                                      'contain'=>array('InformationUser'=>array(
+														                                            'Nationality','State','OState','RState','OCity','RCity'
+																									),
+																			'UserQualification'=>array(
+																			                           'EducationQualification'
+																									   ),
+																			'UserEmploymentDetail'						
+																		   )
+														  )
+										    );
+	
+	$currentStatus = $userInfo['InformationUser']['current_status'];
+	if($currentStatus=='registered')
+	   {
+		echo $this->Session->setFlash('<button class="close" aria-hidden="true" data-dismiss="alert" type="button">×</button>Kindly fill the Personal Information first....','default',array('class'=>'alert alert-danger alert-dismissable'));   		   
+		return $this->redirect(array('controller'=>'users','action'=>'basic_info'));	
+	   }
+    if($currentStatus=='step1_bi')
+	   {
+		echo $this->Session->setFlash('<button class="close" aria-hidden="true" data-dismiss="alert" type="button">×</button>Kindly fill the Contact Details first....','default',array('class'=>'alert alert-danger alert-dismissable'));   		   
+		return $this->redirect(array('controller'=>'users','action'=>'contact_details'));
+	   }
+    if($currentStatus=='step2_cond')
+	   {
+		echo $this->Session->setFlash('<button class="close" aria-hidden="true" data-dismiss="alert" type="button">×</button>Kindly fill the Educational Details first....','default',array('class'=>'alert alert-danger alert-dismissable'));   		   
+		return $this->redirect(array('controller'=>'user_qualifications','action'=>'add'));
+	   } 
+    if($currentStatus=='step3_qd')
+	   {
+		echo $this->Session->setFlash('<button class="close" aria-hidden="true" data-dismiss="alert" type="button">×</button>Kindly fill the Current Service Details first....','default',array('class'=>'alert alert-danger alert-dismissable'));   		   
+		return $this->redirect(array('controller'=>'users','action'=>'current_service_details'));	
+	   }
+    if($currentStatus=='step4_csd')
+	   {
+		echo $this->Session->setFlash('<button class="close" aria-hidden="true" data-dismiss="alert" type="button">×</button>Kindly fill the Employment Details first....','default',array('class'=>'alert alert-danger alert-dismissable'));   		   
+		return $this->redirect(array('controller'=>'user_employment_details','action'=>'add'));	
+	   }
+    if($currentStatus=='step5_expd')
+	   {
+		echo $this->Session->setFlash('<button class="close" aria-hidden="true" data-dismiss="alert" type="button">×</button>Kindly upload Profile Picture and Signature first....','default',array('class'=>'alert alert-danger alert-dismissable'));   		   
+		return $this->redirect(array('controller'=>'users','action'=>'doc_upload_part1'));	
+	   }
+
+    $this->set(compact('userInfo'));	   
+    											
+  }
+  
+  public function apply($id=null)
+   { 
+    if(!$this->Vacancy->exists($id))
+	 {
+	  throw new NotFoundException('Invalid Vacancy');	
+	 }
+    
+	$this->User->Behaviors->load('Containable');
+	$userInfo = $this->User->find('first',array('conditions'=>array(
+	                                                         'User.id'=>$this->Session->read('Auth.User.id')
+															 ),
+										        'contain'=>array(   
+												                    'InformationUser'=>array(
+																							'Nationality','State','OState','RState','OCity','RCity'
+																							),
+																	'UserQualification'=>array(
+																							   'EducationQualification'
+																							   ),
+																	'UserEmploymentDetail',
+																	'VacanciesEssential'=> array(
+																	                             'fields'=>array( 
+																												'vacancy_id',
+																												'essential_name',
+																												'essential_name',
+																												'UsersVacanciesEssential'=>array(
+																												                                    
+																	                                                                            )
+																												)								
+																								),
+																	'VacanciesDesirable'=> array(
+																	                             'fields'=>array( 
+																												'vacancy_id',
+																												'desirable_name',
+																												'UsersVacanciesDesirable'=>array(
+																												                                    
+																	                                                                            )
+																												)								
+																								),							
+																																								
+															   )			 
+												)
+								  );
+	
+	
+	$currentDate = date('Y-m-d');
+	//Checking the closing date of vacancy
+	$vacancyOpeningClosingDate = $this->Vacancy->find('count',array('conditions'=>array
+	                                                                            (  
+	                                                                               'status'=>'Approved',
+	                                                                               'Vacancy.id'=>$id,
+																				   'Notice.opening_date <=' => $currentDate,
+																				   'Notice.closing_date >=' => $currentDate
+																				 )
+	                                                                )
+												      );
+												
+	//For Stopping the user from applying the vacancy if it is closed or not opened
+	if(!$vacancyOpeningClosingDate)
+	{
+	  throw new NotFoundException('Invalid.....');	
+	}	
+	
+	//For Checking whether Vacancy and the user exists 
+	$appliedVacancy=$this->UserAppliedVacancy->find('count',array('conditions'=>array(
+	                                                                                  'vacancy_id'=>$id,
+																					   'user_id'=>$this->Session->read('Auth.User.id')
+																					  )
+																			  )
+													);
+    
+	//For finding applying Date
+	$applyingDate=$this->UserAppliedVacancy->find('first',array('conditions'=>array('vacancy_id'=>$id,
+	                                                                                'user_id'=>$this->Session->read('Auth.User.id')
+																					)
+															    )
+												  );
+	
+	if($userInfo['InformationUser']['current_status'] == 'registered')
+	  {
+		return $this->redirect(array('action'=>'basic_info'));
+	  }
+	 if($userInfo['InformationUser']['current_status'] == 'step1_bi')
+	  {
+		return $this->redirect(array('action'=>'contact_details'));
+	  }
+	 if($userInfo['InformationUser']['current_status'] == 'step2_cond')
+	  {
+		return $this->redirect(array('controller'=>'user_qualifications','action'=>'add'));
+	  }
+	 if($userInfo['InformationUser']['current_status'] == 'step3_qd')
+	  {
+		return $this->redirect(array('action'=>'current_service_details'));
+	  } 
+     if($userInfo['InformationUser']['current_status'] == 'step4_csd')
+	  {
+		return $this->redirect(array('controller'=>'user_employment_details','action'=>'add'));
+	  }
+     if($userInfo['InformationUser']['current_status'] == 'step5_expd')
+	  {
+		return $this->redirect(array('action'=>'doc_upload_part1'));
+	  }
+     
+	 $this->Vacancy->Behaviors->load('Containable');
+     $vacancy = $this->Vacancy->find('first',array('conditions'=>array('Vacancy.id'=>$id),
+	                                               'fields'=>'id',
+	                                               'contain'=>array(    
+													                    'Notice'=>array('fields'=>array('id','advt_number','closing_date')), 
+													                    'Post'  =>array('fields'=>array('post_name')),
+																		'Organization'=>array('fields'=>array('organization_name')),
+																		'Department'=>array('fields'=>array('department_name')),
+																		'PayScale'=>array('fields'=>array('pay_scale')),
+																		'Essential',
+																		'Desirable'
+																	)
+												  ));
+     
+	 $serviceInfo = $this->User->ServiceAndBatchInfo->find('first',array('conditions'=>array(
+	                                                                                          'ServiceAndBatchInfo.user_id'=>$this->Session->read('Auth.User.id')
+																			                 )
+														                )  
+														  );
+       	 
+	 if($vacancy['Post']['post_name'] == 'Dy. Chairman' || $vacancy['Post']['post_name'] == 'Chairman' )
+	   {
+		 if(empty($serviceInfo))
+		 {
+		  return $this->redirect(array('controller'=>'service_and_batch_infos','action'=>'info',$id));	 
+		 }			 
+	   }
+	 if($userInfo['InformationUser']['statement']=='' || $userInfo['InformationUser']['statement']==NULL)
+	 {
+	   return $this->redirect(array('controller'=>'users','action'=>'other_info',$id));	 	 
+	 }		
+     
+     //For Finding whether user has already entered Essentials and Desirables for applying Vacancy
+	  $alEnEssNew = array();
+	  foreach($vacancy['Essential'] as $alEss)
+	  {
+	    $alEnEssNew[] = $alEss['VacanciesEssential']['id']; 	  
+	  }
+	 $alEnteredEss = $this->User->UsersVacanciesEssential->find('count',array(
+	                                                                           'conditions'=>array(
+																			                       'UsersVacanciesEssential.user_id'=>$this->Session->read('Auth.User.id'),
+																			                       'UsersVacanciesEssential.vacancies_essential_id'=>$alEnEssNew
+																			                      )
+																			   )
+															    );
+	
+     if(!$alEnteredEss)
+	 {
+	   return $this->redirect(array('controller'=>'users','action'=>'essentials_and_desirables',$id));	 
+	 }		 
+	
+	$vacancyId = $id; 
+    $this->set(compact('appliedVacancy','applyingDate','vacancyClosingDate','userInfo','vacancy','serviceInfo','userVEss','vacancyId'));
+   
+   }  
+
+    public function applied_vacancy_export_pdf($id=null) 
+	{
+	 if(!$this->Vacancy->exists($id))
+	{
+	 throw new NotFoundException('Invalid Vacancy');	
+	} 
+	
+	// initializing mPDF
+   $this->Mpdf->init();
+
+    // setting filename of output pdf file
+    $this->Mpdf->setFilename('AppliedVacancy.pdf');
+
+    // setting output to I, D, F, S
+    $this->Mpdf->setOutput('D');
+	//$this->Mpdf->SetDisplayMode('fullpage');
+    // you can call any mPDF method via component, for example:
+    $this->Mpdf->SetWatermarkText("Draft");
+	//$stylesheet = file_get_contents('../webroot/css/bootstrap/css/bootstrap.min.css');
+	
+	//$this->Mpdf->WriteHTML($stylesheet,1);
+	
+       	
+	
+	//For Checking whether Vacancy and the user exists 
+	$appliedVacancy=$this->UserAppliedVacancy->find('count',array('conditions'=>array(
+	                                                                                  'vacancy_id'=>$id,
+																					   'user_id'=>$this->Session->read('Auth.User.id')
+																					       )
+																			  )
+																);
+	 //For finding applying Date
+	 $applyingDate=$this->UserAppliedVacancy->find('first',array('conditions'=>array('vacancy_id'=>$id,
+	                                                                                 'user_id'=>$this->Session->read('Auth.User.id')
+																					)
+															    )
+												  );													
+	
+	
+	
+	/*if($appliedVacancy)
+	   {
+		throw new NotFoundException('Already Applied');
+	   }*/
+	$this->User->Behaviors->load('Containable');
+	$this->set('userInfo',$this->User->find('first',array('conditions'=>array
+	                                                                      ('user_id'=>$this->Session->read('Auth.User.id')
+																		  ),
+	                                                      'contain'=>array('InformationUser'=>array(
+														                                            'Nationality','State','OState','RState','OCity','RCity'
+																									),
+																			'UserQualification'=>array(
+																			                           'EducationQualification'
+																									   ),
+																			'UserEmploymentDetail'						
+																		   )
+														  )
+										    ));
+	$this->set(compact('appliedVacancy','applyingDate'));
+    $this->set('vacancy',$this->Vacancy->find('first',array('conditions'=>array('Vacancy.id'=>$id))));
+     	
+	 $this->render('apply');	
+    }		
+   
+   public function other_info($id)
+   {
+	 if(!$this->Vacancy->exists($id))
+	  {
+	   throw new NotFoundException('Invalid Vacancy'); 
+	  }
+      $currentDate = date('Y-m-d');	 
+	  $approvedVacancies = $this->Vacancy->find('count',array('conditions'=>array(
+	                                                                              'status'=>'Approved',
+																				  'Vacancy.id'=>$id,
+																				  'Notice.opening_date <=' => $currentDate,
+																				  'Notice.closing_date >=' => $currentDate
+																				  )
+															 ));	
+	  if(!$approvedVacancies)
+	  {
+	    throw new NotFoundException('Invalid....');	  
+	  }  
+
+	 $user = $this->User->InformationUser->find('first',array('conditions'=>array(
+	                                                                             'user_id'=>$this->Session->read('Auth.User.id')
+																				 ),
+															   'fields'=>array('id','community','vigilance_pdf','caste_pdf')					 
+															  ));
+	 
+	 $this->User->InformationUser->id = $user['InformationUser']['id'];   
+	 $this->set(compact('user'));
+	 if($this->request->is(array('post','put')))
+	   { 
+			$this->User->InformationUser->validator()->remove('other_disability');
+			$this->User->InformationUser->validator()->remove('o_address');
+			$this->User->InformationUser->validator()->remove('r_address');
+			$this->User->InformationUser->validator()->remove('other_parent_organization');
+			$this->User->InformationUser->validator()->remove('other_current_organization');
+			$this->User->InformationUser->validator()->remove('nature_of_present_emp');
+			$this->User->InformationUser->validator()->remove('present_post');
+			
+		 if($this->User->InformationUser->save($this->request->data))
+		 {
+			return $this->redirect(array('action'=>'essentials_and_desirables',$id)); 
+		 }
+         else	
+		 {  pr($this->User->InformationUser->invalidFields());
+		    $this->Session->setFlash('Sorry unable to edit details , Please try again later....','default',array('class'=>'alert alert-danger')); 	 
+		 }			 
+	   } 
+      else
+	   {
+		 $this->request->data = $this->User->InformationUser->find('first',array('conditions'=>array(
+	                                                                             'user_id'=>$this->Session->read('Auth.User.id')
+																				 ),
+															   'fields'=>array('id','statement','additional_info','vigilance_pdf','caste_pdf')					 
+															  ));
+         $this->request->data['InformationUser']['statement']='';
+		 $this->request->data['InformationUser']['additional_info']='';
+         		 
+	   }		  
+   }
+    
+  
+  public function preview_export_pdf() 
+	{
+	
+	//echo 'Hii';exit;
+	
+	// initializing mPDF
+   $this->Mpdf->init();
+
+    // setting filename of output pdf file
+    $this->Mpdf->setFilename('Preview.pdf');
+
+    // setting output to I, D, F, S
+    $this->Mpdf->setOutput('D');
+	//$this->Mpdf->SetDisplayMode('fullpage');
+    // you can call any mPDF method via component, for example:
+    $this->Mpdf->SetWatermarkText("Draft");
+	//$stylesheet = file_get_contents('../webroot/css/bootstrap/css/bootstrap.min.css');
+	
+	//$this->Mpdf->WriteHTML($stylesheet,1);
+	
+	
+	
+	   $this->User->Behaviors->load('Containable');
+	$this->set('userInfo',$this->User->find('first',array('conditions'=>array
+	                                                                      ('user_id'=>$this->Session->read('Auth.User.id')
+																		  ),
+	                                                      'contain'=>array('InformationUser'=>array(
+														                                            'Nationality','State','OState','RState','OCity','RCity'
+																									),
+																			'UserQualification'=>array(
+																			                           'EducationQualification'
+																									   ),
+																			'UserEmploymentDetail'						
+																		   )
+														  )
+	  									    )); 
+		//For Changing The view	
+		$this->render('preview');
+      		
+		$this->set(compact('userInfo'));
+	}
+	
+	public function bio_data_performa($id=null)
+   { 
+    if(!$this->Vacancy->exists($id))
+	{
+	 throw new NotFoundException('Invalid Vacancy');	
+	} 
+	//For Checking whether Vacancy and the user exists 
+	$appliedVacancy=$this->UserAppliedVacancy->find('count',array('conditions'=>array(
+	                                                                                  'vacancy_id'=>$id,
+																					   'user_id'=>$this->Session->read('Auth.User.id')
+																					       )
+																			  )
+																);
+	 //For finding applying Date
+	 $applyingDate=$this->UserAppliedVacancy->find('first',array('conditions'=>array('vacancy_id'=>$id,
+	                                                                                 'user_id'=>$this->Session->read('Auth.User.id')
+																					)
+															    )
+												  );													
+	
+	/*if($appliedVacancy)
+	   {
+		throw new NotFoundException('Already Applied');
+	   }*/
+	$this->User->Behaviors->load('Containable');
+	$this->set('userInfo',$this->User->find('first',array('conditions'=>array
+	                                                                      ('user_id'=>$this->Session->read('Auth.User.id')
+																		  ),
+	                                                      'contain'=>array('InformationUser'=>array(
+														                                            'Nationality','State','OState','RState','OCity','RCity'
+																									),
+																			'UserQualification'=>array(
+																			                           'EducationQualification'
+																									   ),
+																			'UserEmploymentDetail'
+                                                                       																		
+																		   )
+														  )
+										    ));
+	$this->set(compact('appliedVacancy','applyingDate'));
+    $this->set('vacancy',$this->Vacancy->find('first',array('conditions'=>array('Vacancy.id'=>$id))));
+	$this->set('serviceInfo',$this->User->ServiceAndBatchInfo->find('first',array('conditions'=>array(
+	                                                                             'ServiceAndBatchInfo.user_id'=>$this->Session->read('Auth.User.id')
+																				 ))));
+		
+   
+   } 
+   
+
+  public function essentials_and_desirables($id=null)
+	{
+	 if(!$this->Vacancy->exists($id))
+	  {
+	   throw new NotFoundException('Invalid Vacancy'); 
+	  }
+      
+	  $userId =$this->Session->read('Auth.User.id');
+	  $currentDate = date('Y-m-d');
+      $vacancyOpeningClosingDate = $this->Vacancy->find('count',array('conditions'=>array(  'status'=>'Approved',
+	                                                                               'Vacancy.id'=>$id,
+																				   'Notice.opening_date <=' => $currentDate,
+																				   'Notice.closing_date >=' => $currentDate
+																				 )
+	                                                          )
+												);
+												
+	//For Stopping the user from viewing the pages dependent on vacancy if it is closed or not opened
+	if(!$vacancyOpeningClosingDate)
+	{
+	  throw new NotFoundException('Invalid.....');	
+	}
+	
+	  $this->Vacancy->Behaviors->load('Containable');
+	  $vacancyeDs = $this->Vacancy->find('first',array('conditions'=>array('Vacancy.id'=>$id,
+	                                                                       'status'=>'Approved',
+	                                                                       'Vacancy.id'=>$id,
+																		   'Notice.opening_date <=' => $currentDate,
+																		   'Notice.closing_date >=' => $currentDate
+																		  ),
+	                                                    'fields'=>'id',
+	                                                   'contain'=>array(
+													                    'Notice'=>array('fields'=>array('opening_date','closing_date')), 
+													                    'Essential',
+																		'Desirable'
+																		)
+													  )
+									    );
+	  
+	  //pr($vacancyeDs);
+	  //For Finding whether user has already entered Essentials and Desirables for applying Vacancy
+	  $alEnEssNew = array();
+	  foreach($vacancyeDs['Essential'] as $alEss)
+	  {
+	    $alEnEssNew[] = $alEss['VacanciesEssential']['id']; 	  
+	  }
+	  //pr($alEnEssNew);
+	  
+	  $alEnteredEss = $this->User->UsersVacanciesEssential->find('count',array(
+	                                                                           'conditions'=>array(
+																			                       'UsersVacanciesEssential.user_id'=>$userId,
+																			                       'UsersVacanciesEssential.vacancies_essential_id'=>$alEnEssNew
+																			                      )
+																			   )
+															    );
+	  
+	   //pr($alEnteredEss);															
+	  if($alEnteredEss)
+	  {
+		return $this->redirect(array('controller'=>'users','action'=>'apply',$id));  
+	  }	  
+	  
+	  if($this->request->is('post','put'))
+	  {  
+		$ves = $this->request->data;
+		$ves = Hash::insert($ves,'UsersVacanciesEssential.{n}.user_id',$userId);
+		$ves = Hash::insert($ves,'UsersVacanciesDesirable.{n}.user_id',$userId);
+		// For Inserting Vacancy Essential Id
+		
+		$userEssentials = $ves['UsersVacanciesEssential'];
+		
+		 $newArray1 = array();
+		 foreach($userEssentials as $key=>$value)
+		 {
+		   $newArray1[$key] = array_merge($value,array('vacancies_essential_id'=>$key));	 
+		 }
+		
+		  //Users Vacancy Essential Data
+		  $veData = $newArray1;		
+		  //For Inserting Vacancy Desirable Id
+        if(!empty($ves['UsersVacanciesDesirable']))
+		{	
+			$userDesirables = $ves['UsersVacanciesDesirable'];
+			$newArray2 = array();
+			foreach($userDesirables as $key=>$value)
+			{
+			  $newArray2[$key] = array_merge($value,array('vacancies_desirable_id'=>$key));	
+			}
+		       // Users Vacancy Desirable Data
+		   $vdData = $newArray2;
+		}
+
+		// else
+		// {
+		 // $this->request->data = $data1;	
+		// }	
+		//pr($this->request->data);
+		//exit;
+		//pr($veData); exit;
+		// $this->User->set($veData,);
+		// if($this->User->validates())
+		// {
+		 // echo "Validated";	
+		// }
+		// else
+		// {$errors = $this->User->UsersVacanciesEssential->validationErrors;
+	      // var_dump($errors);
+	    // }
+		// exit;
+				$this->User->UsersVacanciesEssential->create();
+				if($this->User->UsersVacanciesEssential->saveMany($veData))
+				{
+				  if(!empty($vdData))
+				  {  
+					  $this->User->UsersVacanciesDesirable->create();	 
+					  if($this->User->UsersVacanciesDesirable->saveMany($vdData))
+					   {			  
+						return $this->redirect(array('controller'=>'users','action'=>'apply',$id)); 
+					   }
+                            // For Rolling Back , if unable to enter UsersVacanciesDesirable
+						$veNew = array();
+						foreach($veData as $ve)
+						{
+						 $veNew[] = $ve['vacancies_essential_id'];	
+						}				
+						if(count($veNew))
+						{					
+						 $this->User->UsersVacanciesEssential->deleteAll(array(				                                                    
+																			  'UsersVacanciesEssential.user_id'=>$userId,
+																			  'UsersVacanciesEssential.vacancies_essential_id'=>$veNew																	                  																					  				  
+																			  ),
+																		false	  
+																	  );
+						}
+                    echo $this->Session->setFlash('<button class="close" aria-hidden="true" data-dismiss="alert" type="button">×</button>Sorry,Unable to add,Please try again later....','default',array('class'=>'alert alert-danger alert-dismissable')); 
+					return $this->redirect(array('controller'=>'users','action'=>'essentials_and_desirables',$id));							
+				  }
+				  else
+				  { pr($this->User->UsersVacanciesEssential->invalidFields());
+				    return $this->redirect(array('controller'=>'users','action'=>'apply',$id)); 	   
+				  } 	  
+			  }
+             else
+			 {
+			   echo $this->Session->setFlash('<button class="close" aria-hidden="true" data-dismiss="alert" type="button">×</button>Sorry,Unable to add,Please try again later....','default',array('class'=>'alert alert-danger alert-dismissable')); 
+			   return $this->redirect(array('controller'=>'users','action'=>'essentials_and_desirables',$id));								 
+			 }				 
+		   }
+		
+		 // pr($this->User->UsersVacanciesEssential->validationErrors);
+		 // $log = $this->User->UsersVacanciesEssential->getDataSource()->getLog(false,false);
+         // debug($log);		  
+		 
+	  // $this->Vacancy->Behaviors->load('Containable');
+	  // $vacancyeDs = $this->Vacancy->find('first',array('conditions'=>array('Vacancy.id'=>$id,
+	                                                                       // 'status'=>'Approved',
+	                                                                       // 'Vacancy.id'=>$id,
+																		   // 'Notice.opening_date <=' => $currentDate,
+																		   // 'Notice.closing_date >=' => $currentDate
+																		  // ),
+	                                                    // 'fields'=>'id',
+	                                                   // 'contain'=>array(
+													                    // 'Notice'=>array('fields'=>array('opening_date','closing_date')), 
+													                    // 'Essential',
+																		// 'Desirable'
+																		// )
+													  // )
+									    // );
+										
+	$this->set(compact('vacancyeDs','userId'));
+	}  
+	
+        public function download_self_profile_pic()
+        {
+            $this->User->recursive=-1;
+            $employeeInfo=$this->User->find('first',array(
+                                                'conditions'=>array(
+                                                                    'id'=>$this->Session->read('Auth.User.id'),
+                                                    
+                                                                    ),
+                                                'fields'=>array('User.profilepic')
+                                                )
+                                );
+            
+            if(array_key_exists('User', $employeeInfo))
+            {
+                if($employeeInfo['User']['profilepic']!=NULL || $employeeInfo['User']['profilepic']!='')
+                    $file=$employeeInfo['User']['profilepic'];
+                else
+                    $file='default.png';
+                $this->response->file(WWW_ROOT .'/uploads/userimages/'.$file);
+                return $this->response;
+            }
+            else
+            {
+                throw new LogicException();
+            }
+        }
+		
+        public function download_self_profile_sign()
+        {
+            $this->User->recursive=-1;
+            $employeeInfo=$this->User->find('first',array(
+                                                'conditions'=>array(
+                                                                    'id'=>$this->Session->read('Auth.User.id'),
+                                                    
+                                                                    ),
+                                                'fields'=>array('User.profilesignature')
+                                                )
+                                );
+            
+            if(array_key_exists('User', $employeeInfo))
+            {
+                if($employeeInfo['User']['profilesignature']!=NULL || $employeeInfo['User']['profilesignature']!='')
+                    $file=$employeeInfo['User']['profilesignature'];
+                else
+                    $file='not-uploaded.jpg';
+                $this->response->file(WWW_ROOT .'/uploads/userimages/'.$file);
+                return $this->response;
+            }
+            else
+            {
+                throw new LogicException();
+            }
+        }		
+        public function dwnl_new_upl_self_pic()
+        {
+         
+            if($this->Session->check('new_uploaded_profile_pic'))
+            {
+                
+                    $file=$this->Session->read('new_uploaded_profile_pic');
+               
+                $this->response->file(WWW_ROOT .'/uploads/userimages/'.$file);
+                return $this->response;
+            }
+            else
+            {
+                throw new LogicException();
+            }
+        }	
+        public function dwnl_new_upl_self_sign()
+        {
+            
+            
+            if($this->Session->check('new_uploaded_profile_sign'))
+            {
+                
+                    $file=$this->Session->read('new_uploaded_profile_sign');
+               
+                $this->response->file(WWW_ROOT .'/uploads/userimages/'.$file);
+                return $this->response;
+            }
+            else
+            {
+                throw new LogicException();
+            }
+        }
+		
+   public function download_self_caste_pdf($id=null)
+        {
+            $this->User->InformationUser->recursive=-1;
+            $employeeInfo=$this->User->InformationUser->find('first',array(
+																			'conditions'=>array(
+																								'InformationUser.id'=>$id,
+																				
+																								),
+																			'fields'=>array('InformationUser.caste_pdf')
+																			)
+															);
+            
+            if(array_key_exists('InformationUser', $employeeInfo))
+            {
+                if($employeeInfo['InformationUser']['caste_pdf']!=NULL || $employeeInfo['InformationUser']['caste_pdf']!='')
+                    $file=$employeeInfo['InformationUser']['caste_pdf'];
+                
+                $this->response->file(WWW_ROOT .'/uploads/documents/'.$file,array('download'=>true,'name'=>'caste_certificate.pdf'));
+                return $this->response;
+            }
+            else
+		{	
+			throw new UnauthorizedException(__('You are not authrozed to download this file.'));
+		}
+        }
+ 
+ public function citiesbystateid()
+ {
+  $this->layout=false;
+  if($this->request->is('post'))
+  {
+	$stateId =  $this->request->data['id'];
+    $cities  =  $this->User->InformationUser->State->City->find('list',array(
+	                                          'conditions'=>array('state_id'=>$stateId),
+											  'fields'    =>array('id','city_name'),
+											  'order'     =>'city_name'
+											 )
+                                 );		
+									
+  }
+  $this->set('cities',$cities);  
+ }
+
+ public function officelocationsbyorgnid()
+ {
+	$this->layout=false; 
+	if($this->request->is('post'))
+  {
+	$orgnId =  $this->request->data['id'];
+    $officeLocations  =  $this->User->OfficeLocation->find('list',array(
+																	  'conditions'=>array('organization_id'=>$orgnId),
+																	  'fields'    =>array('id','location_name'),
+																	  'order'     =>'id'
+																	 )
+														 );		
+									
+  }
+  $this->set('officeLocations',$officeLocations);  
+ }
+ 
+ public function departmentsbyofficelocationid()
+ {
+	  $this->layout=false;
+	  if($this->request->is('post'))
+	  {
+		$officelocationId = $this->request->data['id'];
+		
+		$departmentOfficeLocations =  $this->User->OfficeLocation->DepartmentsOfficeLocation->find('list',array(
+																								'conditions'=>array('office_location_id'=>$officelocationId),
+																								'fields'    =>array('department_id')
+																								)
+																					);
+		 
+		 $departments = $this->User->Department->find('list',array(
+																   'conditions'=>array('id'=>$departmentOfficeLocations),
+																   'fields'=>array('id','department_name'),
+																   'order'=>'id'
+																  )
+													 );
+	  }
+  $this->set('departments',$departments); 
+ }
+ 
+ 
+ 
+ 
+ public function profile()
+ {
+   if ($this->request->is(array('post', 'put'))) {
+   
+			$this->User->id=$this->Session->read('Auth.User.id');
+			
+			$this->request->data['User']['modified_by_user_id'] = $this->Session->read('Auth.User.id');
+			$this->request->data['User']['modified_on'] = $this->User->getDataSource()->expression('NOW()');
+		
+			if ($this->User->save($this->request->data)) {
+				
+				$this->Session->setFlash('The user details has been saved.','default',array('class' => 'alert alert-success '));
+				return $this->redirect(array('controller'=>'dashboard','action' => 'index'));
+			} else {
+				$this->Session->setFlash('The user details could not be saved. Please, try again later....','default',array('class' => 'alert alert-danger'));
+			}
+		}
+		$options = array('conditions' => array('User.id' => $this->Session->read('Auth.User.id')),'recursive'=> 1);
+		$this->request->data = $this->User->find('first', $options);
+		$designations = $this->User->Designation->find('list',array('fields'=>array('id','designation_name'))); 
+        $this->set('designations',$designations);
+ }
+ 
+	public function change_password()
+	{
+		
+	  	
+		//pr($this->request->is('post'));
+		if($this->request->is('post'))
+		{
+			         					
+			$rsa = new Crypt_RSA();
+			$rsa->setEncryptionMode(CRYPT_RSA_ENCRYPTION_PKCS1);
+			
+			$rsa->loadKey($this->Session->read('private_key'));
+			$RSAbase_decodedPHPOldPwd = base64_decode($this->request->data['User']['current_password']);
+			$RSAbase_decodedPHPNewPwd = base64_decode($this->request->data['User']['password']);
+			$RSAbase_decodedPHPNewConfirmPwd= base64_decode($this->request->data['User']['password_confirm']);
+			
+			
+			$RSAdecryptedPHPOldPwd = $rsa->decrypt($RSAbase_decodedPHPOldPwd);	
+			$RSAdecryptedPHPNewPwd = $rsa->decrypt($RSAbase_decodedPHPNewPwd);
+			$RSAdecryptedPHPNewConfirmPwd=$rsa->decrypt($RSAbase_decodedPHPNewConfirmPwd);
+			
+			$this->Session->delete('private_key');					
+			
+			$this->request->data['User']['current_password'] = md5($RSAdecryptedPHPOldPwd);
+			$this->request->data['User']['password']         = $RSAdecryptedPHPNewPwd;
+			
+			$this->request->data['User']['password_confirm']         = $RSAdecryptedPHPNewConfirmPwd;
+			$cPwd = $this->request->data['User']['current_password']; // encrypted md5 current password 
+ 
+			$this->User->recursive=-1;
+			$authUserORnot=$this->User->find('count',array(
+														   'conditions'=>array(
+																				'id'=>$this->Session->read('Auth.User.id'),
+																				'password'=>AuthComponent::password($cPwd)
+																			  )
+														  )
+											);	
+
+										
+			if(!$authUserORnot)
+			{
+				throw new UnauthorizedException('You have entered wrong password.');
+			}
+			else
+			{
+					
+			
+				//For Checking Whether The New Password Exists or Not
+				
+				$authUserOldPwd=$this->UsersPasswordHistory->find('all',array(
+															   'conditions'=>array(
+																					'user_id'=>$this->Session->read('Auth.User.id'),
+																					//'password'=>AuthComponent::password($this->request->data['User']['password'])
+																				  ),
+																'order'    =>array('id' => 'desc'),
+																'limit'	   =>3														
+															  )
+												);								
+				
+				
+				
+				$last3pass=array();
+				foreach($authUserOldPwd as $pass)
+				{
+					$last3pass[]=$pass['UsersPasswordHistory']['password'];
+				}
+				
+				if(in_array(AuthComponent::password(md5($this->request->data['User']['password'])),$last3pass))
+				{
+					
+					$this->request->data=null;
+					$this->Session->setFlash('<button class="close" aria-hidden="true" data-dismiss="alert" type="button">×</button>You can not use your previous 3 passwords.','default',array('class'=>'alert alert-danger alert-dismissable'));
+					
+					
+				}
+				else
+				{
+				
+					$this->request->data['User']['password_status'] = 'Changed';
+					$this->request->data['User']['force_password_change'] = '1';
+					$this->User->set($this->request->data);
+					if ($this->User->validates()) 
+					{
+						$this->request->data['User']['password']         = md5($RSAdecryptedPHPNewPwd);
+						$this->request->data['User']['password_confirm']  = md5($RSAdecryptedPHPNewPwd);
+						$this->User->set($this->request->data);
+						if ($this->User->save($this->request->data, array('validate' => false)))
+						  {
+							$this->request->data['UsersPasswordHistory'] =array(
+																				'password'=>AuthComponent::password($this->request->data['User']['password']),
+																				'user_id' =>$this->Session->read('Auth.User.id')
+																			   );						
+							$this->UsersPasswordHistory->create();
+							$this->UsersPasswordHistory->save($this->request->data['UsersPasswordHistory']);  
+							   
+							//$this->Session->write('open_login',true); 
+							//$this->Session->write('change_pwd_msg','Your Password has been changed successfully, please login with your new password.');
+							//$this->Session->setFlash('Your Password has been changed successfully, please login with your new password.','default',array('class' => 'alert alert-success '));
+							return $this->redirect(array('controller'=>'users','action' => 'change_pwd_logout'));
+						  }
+					   else 
+						{
+							
+							
+						  $this->Session->setFlash('Password could not be changed. Please, try again.','default',array('class' => 'alert alert-danger'));
+						}								
+					}
+					else
+					{
+							// didn't validate logic
+							$errors = $this->User->validationErrors;
+							
+				   } 
+			   
+				}
+			}	
+	  }	
+
+	
+		  $RSAkeysizePHP = 1024 ;
+          $rsa = new Crypt_RSA();
+		  extract($rsa->createKey($RSAkeysizePHP));
+		  $this->set(compact('publickey'));
+		  $this->Session->write('private_key',$privatekey);
+		 
+	}
+	
+	function SendSms($Msg,$MobileNoS)
+	{
+		/*$SENDER_ID='TPCMNY';
+		$USERNAME='trtopic';
+		$PASSWORD='sms12345';  
+	  
+		if(is_array($MobileNoS))
+		{
+			$MobileNoS=implode(',',$MobileNoS);
+		}
+	  
+		$MSG=urlencode($Msg);
+	  
+		$SMSURL="http://bulk.sms99.in/sendsms.jsp?user=$USERNAME&password=$PASSWORD&mobiles=$MobileNoS&sms=$MSG&senderid=$SENDER_ID";
+
+
+		$ch = curl_init();
+
+		curl_setopt($ch, CURLOPT_VERBOSE, 1);
+		curl_setopt ($ch, CURLOPT_HTTPPROXYTUNNEL, TRUE);
+		curl_setopt ($ch, CURLOPT_SSL_VERIFYPEER, FALSE);
+		curl_setopt ($ch, CURLOPT_URL, $SMSURL);
+		curl_setopt ($ch, CURLOPT_TIMEOUT, 120);
+		$result = curl_exec ($ch);
+		curl_close($ch);*/
+	  
+	}	
+  	public function forgot_password() {
+		
+		 if(!$this->request->is('ajax'))
+             {
+               $this->redirect('/#forgot_password', 303, true);
+             }
+		$this->autoLayout=false;
+                
+                if($this->Session->check('Auth.User'))
+		{
+			$this->redirect(array('controller'=>'dashboards','action' => 'index'));		
+		}
+		
+		if($this->request->is('get'))
+		 {	
+		  $RSAkeysizePHP = 1024 ;
+          $rsa = new Crypt_RSA();
+		  extract($rsa->createKey($RSAkeysizePHP));
+          $this->set(compact('publickey'));
+		  
+		  $this->Session->write('private_key',$privatekey);
+		 }
+		
+		
+		if ($this->request->is('post')) {
+			$captcha = $this->Session->read('captcha_code');
+			$this->Session->delete('captcha_code');
+			if ( $captcha == $this->request->data['User']['captcha'] )
+			{	
+				if (!empty($this->request->data['User']['username']) && !empty($this->request->data['User']['mobile_number'])) 
+				{
+					//$this->Session->setFlash('Verification successful','default',array('class' => 'alert alert-success '));
+							 
+					$employeeCode  = $this->request->data['User']['username'];
+					$mobileNumber = $this->request->data['User']['mobile_number'];
+					$this->User->recursive = -1;  
+					$employee = $this->User->findByUsernameAndMobileNumber($employeeCode, $mobileNumber);
+									
+					if (empty($employee)) {
+						$this->request->data=NULL;
+						$this->Session->setFlash('Incorrect username/mobile number', 'default', array('class' => 'alert alert-danger'));
+						
+					}
+					else
+					{
+						/*$newgenPassword=$this->generatePassword();
+						
+						$this->request->data['Employee']['password']=md5('p$bALN^nhfDRR'.$newgenPassword);
+						$this->request->data['Employee']['password_confirm']=$this->request->data['Employee']['password'];
+						$db = $this->Employee->getDataSource(); 
+						$this->request->data['Employee']['password_reset_on']= $db->expression('NOW()');
+											$this->Employee->validator()->remove('password_reset_on');
+											$this->Employee->validator()->remove('password');
+											$this->Employee->validator()->remove('password_confirm');*/
+						$this->User->id = $employee['User']['id'];
+						// $employee_name = $this->User->find('first',array(
+						                                                 // 'conditions'=>array(
+																		                     // 'User.id'=>$employee['User']['id']
+																							// )
+																		// )
+														  // );
+						// $employee['User']['f_name'] = $employee_name['User'];								  
+						$this->request->data['User']['mail_key']=md5(9*213+$employee['User']['id']);
+						$employee['User']['mail_key']=$this->request->data['User']['mail_key'];
+						$this->request->data['User']['forget_password_key']=md5($this->generateForgotPasswordKey());
+						$employee['User']['forget_password_key']=$this->request->data['User']['forget_password_key'];
+						$db = $this->User->getDataSource(); 
+						$this->request->data['User']['reset_key_sent_on']= $db->expression('NOW()');
+						$this->User->validator()->remove('reset_key_sent_on');
+						if ($this->User->save($this->request->data))
+						{
+							
+							// uncomment after security audit
+							//$this->SendSms('Hello '.$employee['Employee']['employee_name'].', Your password is '.$newgenPassword.'. You can change your password after login.' ,$mobileNumber);
+							
+							//Audit open after edit
+							$this->EmailSend->employeeForgotPasswordMail($employee);
+							
+							
+							$this->request->data=array();
+							$this->Session->setFlash('An email has been sent to your registered email id. You need to follow instuctions in mail to reset your password.','default',array('class' => 'alert alert-success '));
+							//echo $this->webroot.'employees/reset_password/'.$employee['Employee']['mail_key'].'/'.$this->request->data['Employee']['password_reset_key'];
+							//return $this->redirect(array('action' => 'login'));
+						} 	
+					}
+				}
+				else 
+				{
+					$this->request->data=NULL;
+					$this->Session->setFlash('Please enter employee code and mobile number', 'default', array('class' => 'alert alert-danger'));
+				}
+			}
+			else
+			{
+				$this->request->data=NULL;
+				$this->Session->setFlash('Captcha code does not match. Verification unsuccessful','default',array('class' => 'alert alert-danger'));
+			}
+		}
+	}	
+	
+	
+	function reset_password($mail_key,$forget_password_key) 
+	{	   
+		   $this->layout = 'home';
+		    //$db = $this->User->getDataSource(); 
+			//$this->request->data['User']['reset_key_sent_on']= $db->expression('NOW()');
+		   
+		   $this->User->recursive=-1;
+		   $emp=$this->User->find('first',array('conditions'=>array(
+																		'forget_password_key'=>$forget_password_key,
+																		//'reset_key_sent_on '=> $db->expression('DATE_SUB(NOW(), INTERVAL 30 MINUTE)')
+			   
+																		)
+													)
+									   );
+		   //pr($emp);
+		   if(array_key_exists('User', $emp))
+		   {
+			   $mailKeyfromCons=md5(9*213+$emp['User']['id']);
+			   if($mail_key==$mailKeyfromCons)
+			   {
+				   
+				   if(!CakeTime::wasWithinLast('48 hours', $emp['User']['reset_key_sent_on']))        
+				   {
+					 throw new UnauthorizedException('Link you are trying to access, has expired.');
+				   }
+			   }
+			   else
+			   {
+				 throw new UnauthorizedException();
+			   }
+		   }
+		   else
+		   {
+			  throw new UnauthorizedException();
+		   }
+		   
+		   if($this->request->is('get'))
+		   {
+			 $RSAkeysizePHP = 1024 ;
+             $rsa = new Crypt_RSA();
+		     extract($rsa->createKey($RSAkeysizePHP));
+             $this->set(compact('publickey'));
+		  
+		     $this->Session->write('private_key',$privatekey);   
+		   } 
+		   
+        if($this->request->is('post'))
+		{    
+			$captcha = $this->Session->read('captcha_code');
+			$this->Session->delete('captcha_code');
+			if( $captcha == $this->request->data['User']['captcha'] )
+			{
+                  $this->request->data['User']['id']=$emp['User']['id'];
+                    
+					    //For Decryption Of The Password         					
+					
+					$rsa = new Crypt_RSA();
+				    $rsa->setEncryptionMode(CRYPT_RSA_ENCRYPTION_PKCS1);
+				    
+					$rsa->loadKey($this->Session->read('private_key'));
+				    $RSAbase_decodedPHPNewPwd = base64_decode($this->request->data['User']['password']);
+                    $RSAbase_decodedPHPConfirmPwd = base64_decode($this->request->data['User']['password_confirm']);
+
+					$RSAdecryptedPHPNewPwd = $rsa->decrypt($RSAbase_decodedPHPNewPwd);
+					$RSAdecryptedPHPConfirmPwd = $rsa->decrypt($RSAbase_decodedPHPConfirmPwd);
+					
+                    $this->Session->delete('private_key');					
+				    
+					$this->request->data['User']['password']         = md5($RSAdecryptedPHPNewPwd);
+					$this->request->data['User']['password_confirm'] = md5($RSAdecryptedPHPConfirmPwd);
+					
+					//For Checking Whether The New Password Exists or Not
+				
+				$authUserOldPwd=$this->UsersPasswordHistory->find('all',array(
+															   'conditions'=>array(
+																					'user_id'=>$this->request->data['User']['id'],
+																				  ),
+																'order'    =>array('id' => 'desc'),
+																'limit'	   =>3														
+															  )
+												);								
+				
+				$last3pass=array();
+				foreach($authUserOldPwd as $pass)
+				{
+					$last3pass[]=$pass['UsersPasswordHistory']['password'];
+				}
+				
+				if(in_array(AuthComponent::password($this->request->data['User']['password']),$last3pass))
+				{
+					$this->request->data=null;
+					  $RSAkeysizePHP = 1024 ;
+					  $rsa = new Crypt_RSA();
+					  extract($rsa->createKey($RSAkeysizePHP));
+					  $this->set(compact('publickey'));
+					  
+					  $this->Session->write('private_key',$privatekey);	
+					
+					$this->Session->setFlash('<button class="close" aria-hidden="true" data-dismiss="alert" type="button">x</button>You can not use your previous 3 passwords.','default',array('class'=>'alert alert-danger alert-dismissable'));
+				}
+				else
+				{	
+					$this->User->set($this->request->data);
+					$this->User->validator()->remove('password','passwordPolicy');
+					$this->User->validator()->remove('password','minLength');
+					$this->User->validator()->remove('password','maxLength');
+                    if ($this->User->validates()) 
+                    {
+                        $this->request->data['User']['forget_password_key']='changed';
+                        
+                        if ($this->User->save($this->request->data, array('validate' => false)))
+						{
+							$this->request->data['UsersPasswordHistory'] =array(
+																				'password'=>AuthComponent::password($this->request->data['User']['password']),
+																				'user_id' =>$this->request->data['User']['id']
+																			   );						
+							$this->UsersPasswordHistory->create();
+							$this->UsersPasswordHistory->save($this->request->data['UsersPasswordHistory']);  
+							
+							
+							$this->Session->setFlash('Password successfully changed.','default',array('class' => 'alert alert-success '),'msg');
+							$this->Session->write('open_login',true);
+							return $this->redirect(array('action' => 'login'));
+							
+						}
+						else 
+						{
+							$this->Session->setFlash('Password could not be changed. Please, try again.','default',array('class' => 'alert alert-danger'),'msg');
+						    $this->Session->write('open_login',true);
+							return $this->redirect(array('action' => 'login'));
+						}
+                       
+                    }
+                    else {
+                        // didn't validate logic
+                        $errors = $this->User->validationErrors;
+                    }
+		    }    
+                    
+		 }
+		 else
+			{
+			 $RSAkeysizePHP = 1024 ;
+             $rsa = new Crypt_RSA();
+		     extract($rsa->createKey($RSAkeysizePHP));
+             $this->set(compact('publickey'));
+		  
+		     $this->Session->write('private_key',$privatekey);	 
+			  $this->request->data=NULL;
+			  $this->Session->setFlash('Captcha code does not match.','default',array('class' => 'alert alert-danger'));
+			}
+                  
+		} 
+		if(isset($this->request->data['User']['password']) && isset($this->request->data['User']['password_confirm']))
+		{
+			unset($this->request->data['User']['password']);
+			unset($this->request->data['User']['password_confirm']);
+		}
+	}
+	
+	//For Applicant whose Other Organization Name does'nt exists in db
+	public function update_organization_name()
+	{
+		
+	if($this->Session->read('Auth.User.Organization.organization_name')!='Others')
+	{
+	 	throw new MethodNotAllowedException('Invalid....');
+	}
+ 	
+	 
+    $this->User->id = $this->Session->read('Auth.User.id');
+	$info = $this->User->InformationUser->find('first',array('conditions'=>array('user_id'=>$this->Session->read('Auth.User.id')
+	                                                                             ),
+															  'fields'=>array('id','other_orgn_name'),
+															  'recursive'=>-1
+															)
+												);
+												
+	if($this->Session->read('Auth.User.Organization.organization_name')=='Others'&& (!empty($info['InformationUser']['other_orgn_name'])))
+	{
+	  throw new MethodNotAllowedException('Data Already Available');	
+	}
+	
+	$this->User->InformationUser->id = $info['InformationUser']['id'];	
+		
+	  if($this->request->is('post'))
+	  {
+		  
+		//pr($this->request->data); exit;
+        $this->User->InformationUser->validator()->remove('other_disability');
+	    $this->User->InformationUser->validator()->remove('o_address');
+	    $this->User->InformationUser->validator()->remove('r_address');
+	    $this->User->InformationUser->validator()->remove('statement');
+	    $this->User->InformationUser->validator()->remove('additional_info');
+        $this->User->InformationUser->validator()->remove('present_post');
+		$this->User->InformationUser->validator()->remove('nature_of_present_emp'); 
+		$this->User->InformationUser->validator()->remove('other_current_organization');
+        $this->User->InformationUser->validator()->remove('other_parent_organization');
+                
+		
+		if($this->User->InformationUser->save($this->request->data))
+           {
+             echo $this->Session->setFlash(__('<button class="close" aria-hidden="true" data-dismiss="alert" type="button">×</button>Your Organization name updated Successfully ....,kindly login to continue','default',array('class'=>'alert alert-success alert-dismissable')));
+		  	 //return $this->redirect(array('controller'=>'dashboard','action'=>'index'));	   
+             $this->Session->destroy();
+		     //$this->Session->setFlash(__('<button class="close" aria-hidden="true" data-dismiss="alert" type="button">x</button><center>Your Password has been changed successfully, please login with your new password.</center>'),'default',array('class'=>'alert alert-success alert-dismissable'),'msg');
+             $this->Session->write('open_login',true);
+		     $this->redirect($this->Auth->logout()); 
+		   }	
+        else
+           {
+			 //pr($this->User->InformationUser->invalidFields());  
+		     echo $this->Session->setFlash('<button class="close" aria-hidden="true" data-dismiss="alert" type="button">×</button>Unable to Update your Organization Name, Please try again later....','default',array('class'=>'alert alert-danger alert-dismissable'));
+           }		   
+	  }		  
+	}
+	
+	
+	
+	
+}
